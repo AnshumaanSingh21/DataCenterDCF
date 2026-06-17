@@ -101,20 +101,4 @@ def extract_assumption(
         "valid": is_valid
     }
 
-    return {
-
-        "value":
-            value,
-
-        "source":
-            source,
-
-        "confidence":
-            confidence,
-
-        "reasoning":
-            reasoning,
-
-        "valid":
-            is_valid
-    }
+   
