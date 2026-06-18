@@ -30,12 +30,12 @@ def compute_opex(
     )
 
     net_revenue = (
-        revenue_output["financials"]
+        revenue_output["revenue_streams"]
         ["net_revenue"]
     )
 
     power_cost = (
-        revenue_output["financials"]
+        revenue_output["power_detail"]
         ["power_cost"]
     )
 
@@ -295,28 +295,33 @@ def compute_opex(
 
     # -----------------------------
     # PROPERTY TAX
+    # Levied on full asset base
+    # (land + building + equipment),
+    # not land alone.
     # -----------------------------
-    land_value = (
-
-        capex_output[
-            "site_sizing"
-        ][
-            "land_cost_crore"
-        ]
-    )
 
     property_tax = [
 
-        land_value
+        asset_value[i]
 
         * assumptions[
             "property_tax_pct_of_asset_value"
         ]
 
-        for _ in range(years)
+        for i in range(years)
     ]
 
     
+
+    # -----------------------------
+    # MARKETING
+    # -----------------------------
+
+    marketing_cost = escalate(
+        assumptions["marketing_expense_crore"],
+        assumptions["marketing_escalation"],
+        years
+    )
 
     # -----------------------------
     # G&A
@@ -357,6 +362,8 @@ def compute_opex(
             + insurance_cost[i]
 
             + property_tax[i]
+
+            + marketing_cost[i]
 
             + gna_cost[i]
         )
@@ -428,6 +435,9 @@ def compute_opex(
         "Property Tax":
             property_tax,
 
+        "Marketing Cost":
+            marketing_cost,
+
         "G&A Cost":
             gna_cost,
 
@@ -497,11 +507,17 @@ def compute_opex(
             "property_tax":
                 property_tax,
 
+            "marketing_cost":
+                marketing_cost,
+
             "gna_cost":
                 gna_cost
         },
 
         "financials": {
+
+            "net_revenue":
+                net_revenue,
 
             "total_opex":
                 total_opex,

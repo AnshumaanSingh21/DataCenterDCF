@@ -16,7 +16,7 @@ def get_default_loan_assumptions():
 
         "interest_rate": 0.10,
 
-        "loan_tenure_years": 5,
+        "loan_tenure_years": 10,
 
         "moratorium_years": 1,
 

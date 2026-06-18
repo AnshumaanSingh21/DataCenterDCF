@@ -56,7 +56,7 @@ def export_revenue_report(
 
     inputs_rows.append(
         ["Colocation Revenue Realized"]
-        + revenue_output["revenue_streams"]["rack_revenue"]
+        + revenue_output["revenue_streams"]["recurring_colo_revenue"]
     )
 
     # ==================================
@@ -89,7 +89,7 @@ def export_revenue_report(
 
     inputs_rows.append(
         ["OTC Revenue Realized"]
-        + revenue_output["revenue_streams"]["otc_revenue"]
+        + revenue_output["revenue_streams"]["otc_setup_revenue"]
     )
 
     # ==================================
@@ -208,7 +208,7 @@ def export_revenue_report(
 
     inputs_rows.append(
         ["Managed Revenue Realized"]
-        + revenue_output["revenue_streams"]["managed_revenue"]
+        + revenue_output["revenue_streams"]["managed_services_revenue"]
     )
 
     revenue_inputs_df = pd.DataFrame(
@@ -225,11 +225,11 @@ def export_revenue_report(
         "Year":
             years,
 
-        "Rack Revenue":
-            revenue_output["revenue_streams"]["rack_revenue"],
+        "Recurring Colo Revenue":
+            revenue_output["revenue_streams"]["recurring_colo_revenue"],
 
-        "OTC Revenue":
-            revenue_output["revenue_streams"]["otc_revenue"],
+        "OTC Setup Revenue":
+            revenue_output["revenue_streams"]["otc_setup_revenue"],
 
         "Power Revenue":
             revenue_output["revenue_streams"]["power_revenue"],
@@ -237,14 +237,26 @@ def export_revenue_report(
         "Seats Revenue":
             revenue_output["revenue_streams"]["seats_revenue"],
 
-        "Managed Revenue":
-            revenue_output["revenue_streams"]["managed_revenue"],
+        "Managed Services Revenue":
+            revenue_output["revenue_streams"]["managed_services_revenue"],
 
-        "Total Revenue":
-            revenue_output["financials"]["total_revenue"],
+        "Cross Connect Revenue":
+            revenue_output["revenue_streams"]["cross_connect_revenue"],
+
+        "Remote Hands Revenue":
+            revenue_output["revenue_streams"]["remote_hands_revenue"],
+
+        "Professional Services Revenue":
+            revenue_output["revenue_streams"]["professional_services_revenue"],
+
+        "DR Services Revenue":
+            revenue_output["revenue_streams"]["dr_services_revenue"],
+
+        "Gross Revenue":
+            revenue_output["revenue_streams"]["gross_revenue"],
 
         "Net Revenue":
-            revenue_output["financials"]["net_revenue"]
+            revenue_output["revenue_streams"]["net_revenue"]
     })
 
     # --------------------------------

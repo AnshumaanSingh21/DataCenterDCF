@@ -32,11 +32,12 @@ def compute_capex(
 ):
 
     years = user_inputs["projection_years"]
+    start_year = user_inputs.get("start_year", 2026)
 
     year_labels = list(
         range(
-            2026,
-            2026 + years
+            start_year,
+            start_year + years
         )
     )
 
@@ -444,6 +445,9 @@ def compute_capex(
         "Software":
             software_capex,
 
+        "Site Level (Land+Consult)":
+            site_level_capex,
+
         "Pre Op":
             pre_op_capex,
 
@@ -529,6 +533,9 @@ def compute_capex(
 
             "software_capex":
                 software_capex,
+
+            "site_level_capex":
+                site_level_capex,
 
             "pre_op_capex":
                 pre_op_capex

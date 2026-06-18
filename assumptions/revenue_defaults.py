@@ -9,13 +9,13 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
 
     "lease_up_curve": [
         0.10,
-        0.25,
-        0.45,
-        0.65,
-        0.80,
-        0.85,
-        0.85,
-        0.85,
+        0.22,
+        0.27,
+        0.38,
+        0.50,
+        0.56,
+        0.70,
+        0.81,
         0.85,
         0.85,
     ],
@@ -40,7 +40,10 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
     # RECURRING COLOCATION REVENUE
     # =====================================================
 
-    "rack_price_per_rack_crore": 0.011,
+    # Rs 50,000/rack/month space charge (power billed separately).
+    # All-in to tenant ~Rs 86,000-93,000/month (space + 4.5 kW metered power).
+    # Market range Mumbai Tier III greenfield 2026: Rs 65,000-100,000/month all-in.
+    "rack_price_per_rack_crore": 0.005,
 
     "rack_price_escalation": 0.05,
 
@@ -52,7 +55,8 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
     # ONE TIME SETUP REVENUE
     # =====================================================
 
-    "otc_price_per_new_rack_crore": 0.02,
+    # Rs 30,000 one-time per rack (~2.5 months rack rent). Market: Rs 10,000-50,000.
+    "otc_price_per_new_rack_crore": 0.0003,
 
     "otc_price_escalation": 0.05,
 
@@ -84,7 +88,8 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
 
     "seats_per_rack": 0.01,
 
-    "seat_price_per_seat_crore": 0.01,
+    # Rs 10,000/seat/month for dedicated DC workspace (Mumbai 2024).
+    "seat_price_per_seat_crore": 0.001,
 
     "seat_price_escalation": 0.05,
 
@@ -94,9 +99,10 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
     # MANAGED SERVICES REVENUE
     # =====================================================
 
-    "managed_services_penetration": 0.20,
+    "managed_services_penetration": 0.0,
 
-    "managed_service_price_per_rack_crore": 0.128,
+    # Rs 20,000/rack/month for managed services bundle (NOC monitoring, OS patching, etc.).
+    "managed_service_price_per_rack_crore": 0.002,
 
     "managed_service_escalation": 0.05,
 
@@ -212,21 +218,21 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
 
     "kw_per_rack": 6.0,
 
-    "rack_mrc_crore": 0.011,
+    "rack_mrc_crore": 0.005,
 
     "rack_mrc_escalation": 0.05,
 
-    "otc_fee_crore": 0.02,
+    "otc_fee_crore": 0.0003,
 
     "otc_fee_escalation": 0.05,
 
-    "seat_mrc_crore": 0.01,
+    "seat_mrc_crore": 0.001,
 
     "seat_mrc_escalation": 0.05,
 
     "seats_per_rack_ratio": 0.01,
 
-    "managed_rack_mrc_crore": 0.128,
+    "managed_rack_mrc_crore": 0.002,
 
     "managed_rack_escalation": 0.05,
 }
@@ -240,7 +246,7 @@ FACILITY_TYPE_OVERRIDES = {
 
         "power_per_rack_kw": 4.5,
 
-        "managed_services_penetration": 0.20,
+        "managed_services_penetration": 0.0,
     },
 
     "wholesale": {

@@ -1,11 +1,15 @@
 MARKET_ASSUMPTIONS = [
 
-    "mrr_per_kw",
+    "rack_price_per_rack_crore",
 
-    "lease_term_years",
+    "utility_tariff_rs_per_kwh",
 
-    "rack_density_kw",
+    "power_markup_rs_per_kwh",
 
-    "stabilized_utilization"
+    "otc_price_per_new_rack_crore",
+
+    "rack_price_escalation",
+
+    "power_tariff_escalation",
 
 ]

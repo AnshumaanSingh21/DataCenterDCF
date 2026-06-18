@@ -28,5 +28,25 @@ def get_default_depreciation_assumptions():
         # SALVAGE VALUE
         # ==========================================
 
-        "salvage_value_pct": 0.0
+        "salvage_value_pct": 0.0,
+
+        # ==========================================
+        # IT ACT WDV RATES (Income Tax Act, 1961)
+        # Used for taxable income computation only.
+        # Higher than SLM in early years → lower tax.
+        # ==========================================
+
+        # Section 32: Building (not residential) → 10% WDV
+        "civil_wdv_rate": 0.10,
+
+        # Plant & Machinery → 15% WDV
+        "electrical_wdv_rate": 0.15,
+        "mechanical_wdv_rate": 0.15,
+
+        # Computers & peripherals → 40% WDV
+        "network_wdv_rate": 0.40,
+        "it_hardware_wdv_rate": 0.40,
+
+        # Computer software (intangible) → 25% WDV
+        "software_wdv_rate": 0.25,
     }

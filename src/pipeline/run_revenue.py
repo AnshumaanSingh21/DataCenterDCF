@@ -17,9 +17,17 @@ user_inputs = {
 
     "total_racks": 1000,
 
-    "facility_type": "wholesale",
+    "facility_type": "retail_colo",
 
-    "projection_years": 10
+    "projection_years": 10,
+
+    "start_year": 2026,
+
+    "deployment_schedule": {
+        0: 300,
+        3: 300,
+        6: 400
+    }
 }
 
 assumptions = (

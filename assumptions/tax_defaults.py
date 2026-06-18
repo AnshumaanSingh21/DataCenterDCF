@@ -12,7 +12,7 @@ def get_default_tax_assumptions():
         # FUTURE RAG INPUTS
         # =====================================
 
-        "minimum_alternate_tax": 0.00,
+        "minimum_alternate_tax": 0.15,
 
         "tax_holiday_years": 0,
 

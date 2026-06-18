@@ -15,7 +15,7 @@ def compute_working_capital(
     )
 
     revenue = (
-        revenue_output["financials"]
+        revenue_output["revenue_streams"]
         ["net_revenue"]
     )
 

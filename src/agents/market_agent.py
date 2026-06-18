@@ -2,145 +2,123 @@ from pathlib import Path
 import sys
 import json
 
-# ---------------------------------
-# Add project root
-# ---------------------------------
-
 project_root = (
     Path(__file__)
     .resolve()
     .parents[2]
 )
 
-sys.path.append(
-    str(project_root)
-)
-
-# ---------------------------------
-# Imports
-# ---------------------------------
+sys.path.append(str(project_root))
 
 from src.rag.retriever import retrieve
-from src.extraction.extractor import (
-    extract_assumption
+
+from src.registry.market_registry import (
+    MARKET_ASSUMPTIONS
+)
+
+from src.extraction.batch_extractor import (
+    extract_batch_assumptions
+)
+
+from assumptions.revenue_defaults import (
+    FACILITY_TYPE_OVERRIDES,
+    DEFAULT_REVENUE_ASSUMPTIONS
 )
 
 
-def market_agent(location):
+def market_agent(location, facility_type="retail_colo"):
+
+    # --------------------------------
+    # RAG Retrieval
+    # --------------------------------
 
     query = (
-        f"{location} colocation pricing"
+        f"{location} data center colocation "
+        f"pricing rack rental power tariff"
     )
 
-    results = retrieve(
-        query,
-        k=10
-    )
+    results = retrieve(query, k=10)
 
     # --------------------------------
     # Relevance Filter
     # --------------------------------
 
-    relevant_results = []
-
     keywords = [
-        "mrr",
-        "pricing",
-        "colocation",
-        "rack",
-        "revenue",
-        "lease",
-        "term"
+        "pricing", "colocation", "rack",
+        "power", "tariff", "lease", "revenue",
+        "rental", "mrc", "electricity"
     ]
 
-    for result in results:
-
-        text = (
-            result.page_content
-            .lower()
-        )
-
+    relevant = [
+        r for r in results
         if any(
-            keyword in text
-            for keyword in keywords
-        ):
-
-            relevant_results.append(
-                result
-            )
+            kw in r.page_content.lower()
+            for kw in keywords
+        )
+    ]
 
     # --------------------------------
     # Build Context
     # --------------------------------
 
-    context = []
-
-    for result in relevant_results:
-
-        context.append({
-
-            "source":
-                result.metadata.get(
-                    "source_file",
-                    "Unknown"
-                ),
-
-            "text":
-                result.page_content[:1000]
-        })
-
-    # --------------------------------
-    # Save Retrieved Context
-    # --------------------------------
+    context = [
+        {
+            "source": r.metadata.get(
+                "source_file", "Unknown"
+            ),
+            "text": r.page_content[:1000]
+        }
+        for r in relevant
+    ]
 
     with open(
         "outputs/market_context.json",
         "w",
         encoding="utf-8"
     ) as f:
+        json.dump(context, f, indent=4, ensure_ascii=False)
 
-        json.dump(
-            context,
-            f,
-            indent=4,
-            ensure_ascii=False
-        )
     # --------------------------------
-    # Market Assumptions
+    # Resolve kw_per_rack from facility
+    # overrides so the LLM uses the same
+    # density as the revenue engine.
     # --------------------------------
-    from src.registry.market_registry import (
-    MARKET_ASSUMPTIONS
+
+    overrides = FACILITY_TYPE_OVERRIDES.get(
+        facility_type, {}
     )
 
-    
+    kw_per_rack = overrides.get(
+        "kw_per_rack",
+        DEFAULT_REVENUE_ASSUMPTIONS["kw_per_rack"]
+    )
 
     # --------------------------------
-    # Extract Assumptions
+    # Batch Extraction (single LLM call)
     # --------------------------------
 
-    output = {}
-
-    for assumption in MARKET_ASSUMPTIONS:
-
-        output[
-            assumption
-        ] = extract_assumption(
-            assumption,
-            context
-        )
+    output = extract_batch_assumptions(
+        assumption_names=MARKET_ASSUMPTIONS,
+        context=context,
+        location=location,
+        facility_type=facility_type,
+        kw_per_rack=kw_per_rack
+    )
 
     return output
 
 
 if __name__ == "__main__":
 
-    result = market_agent(
-        "Mumbai"
-    )
+    result = market_agent("Mumbai", "retail_colo")
 
     print("\nMarket Agent Output:")
     print("=" * 50)
 
-    print(result)
-
-
+    for key, val in result.items():
+        print(f"\n{key}")
+        print(f"  value      : {val['value']}")
+        print(f"  confidence : {val['confidence']}")
+        print(f"  source     : {val['source']}")
+        print(f"  valid      : {val['valid']}")
+        print(f"  reasoning  : {val['reasoning']}")

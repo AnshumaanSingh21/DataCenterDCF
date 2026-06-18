@@ -239,15 +239,26 @@ def get_default_capex_assumptions():
         # NETWORK REQUIREMENTS
         # ---------------------
 
-        "dmz_switches_per_10_racks": 2,
+        # Perimeter switches: fixed count for the entire facility (HA pair).
+        # 2 per 10 racks was architecturally wrong — perimeter equipment
+        # doesn't scale per rack.
+        "perimeter_switch_count": 4,
 
-        "core_switches_per_20_racks": 2,
+        # Spine/core switches: fixed count for the DC fabric (not per rack).
+        # Scales slowly with DC size; 6 is right for a 1000-rack Tier III build.
+        "spine_switch_count": 6,
 
+        # Leaf switches for management/OOB network: 2 per 10-rack zone,
+        # one primary + one standby. These scale with rack count.
         "server_switches_per_10_racks": 2,
 
-        "load_balancers_per_rack": 1,
+        # Load balancers: 0 — in a colo model the DC operator does not
+        # provision application-layer load balancers. Tenants bring their own.
+        "load_balancers_per_rack": 0,
 
-        "kvm_switches_per_rack": 2,
+        # IP KVM per rack for out-of-band hardware management. 1 is standard;
+        # 2 was double-counted.
+        "kvm_switches_per_rack": 1,
 
         "network_cable_ft_per_rack": 50,
 
@@ -255,9 +266,9 @@ def get_default_capex_assumptions():
         # NETWORK EQUIPMENT COSTS
         # ---------------------
 
-        "dmz_switch_cost": 475000,
+        "perimeter_switch_cost": 475000,
 
-        "core_switch_cost": 1200000,
+        "spine_switch_cost": 1200000,
 
         "server_switch_cost": 850000,
 

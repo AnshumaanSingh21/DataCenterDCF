@@ -30,6 +30,7 @@ def compute_revenue(user_inputs, assumptions):
 
     years = user_inputs["projection_years"]
     total_racks = user_inputs["total_racks"]
+    start_year = user_inputs.get("start_year", 2026)
 
     lease_up = assumptions["lease_up_curve"][:years]
 
@@ -40,6 +41,30 @@ def compute_revenue(user_inputs, assumptions):
     occupied_racks = [
         total_racks * x
         for x in lease_up
+    ]
+
+    # ---------------------------------
+    # DEPLOYMENT CAP
+    # Cap occupied by physically deployed
+    # racks each year. Default: all racks
+    # available from Year 0.
+    # ---------------------------------
+
+    deployment_schedule = user_inputs.get(
+        "deployment_schedule",
+        {0: total_racks}
+    )
+
+    cumulative_deployed = []
+    running_deployed = 0
+
+    for i in range(years):
+        running_deployed += deployment_schedule.get(i, 0)
+        cumulative_deployed.append(running_deployed)
+
+    occupied_racks = [
+        min(occupied_racks[i], cumulative_deployed[i])
+        for i in range(years)
     ]
 
     new_racks = []
@@ -83,14 +108,14 @@ def compute_revenue(user_inputs, assumptions):
     # ---------------------------------
 
     rack_mrc = escalate(
-        assumptions["rack_mrc_crore"],
-        assumptions["rack_mrc_escalation"],
+        assumptions["rack_price_per_rack_crore"],
+        assumptions["rack_price_escalation"],
         years
     )
 
     otc_fee = escalate(
-        assumptions["otc_fee_crore"],
-        assumptions["otc_fee_escalation"],
+        assumptions["otc_price_per_new_rack_crore"],
+        assumptions["otc_price_escalation"],
         years
     )
 
@@ -108,22 +133,46 @@ def compute_revenue(user_inputs, assumptions):
     )
 
     seat_mrc = escalate(
-        assumptions["seat_mrc_crore"],
-        assumptions["seat_mrc_escalation"],
+        assumptions["seat_price_per_seat_crore"],
+        assumptions["seat_price_escalation"],
         years
     )
 
     managed_mrc = escalate(
-        assumptions["managed_rack_mrc_crore"],
-        assumptions["managed_rack_escalation"],
+        assumptions["managed_service_price_per_rack_crore"],
+        assumptions["managed_service_escalation"],
+        years
+    )
+
+    cross_connect_fee = escalate(
+        assumptions["cross_connect_fee_per_connection_crore"],
+        assumptions["cross_connect_escalation"],
+        years
+    )
+
+    remote_hands_fee = escalate(
+        assumptions["remote_hands_revenue_per_rack_crore"],
+        assumptions["remote_hands_escalation"],
+        years
+    )
+
+    prof_services_fee = escalate(
+        assumptions["professional_services_revenue_per_rack_crore"],
+        assumptions["professional_services_escalation"],
+        years
+    )
+
+    dr_services_fee = escalate(
+        assumptions["dr_services_revenue_per_rack_crore"],
+        assumptions["dr_services_escalation"],
         years
     )
 
     # ---------------------------------
-    # RACK REVENUE
+    # RECURRING COLOCATION REVENUE
     # ---------------------------------
 
-    rack_revenue = [
+    recurring_colo_revenue = [
         occupied_racks[i]
         * rack_mrc[i]
         * 12
@@ -131,10 +180,10 @@ def compute_revenue(user_inputs, assumptions):
     ]
 
     # ---------------------------------
-    # OTC REVENUE
+    # OTC SETUP REVENUE
     # ---------------------------------
 
-    otc_revenue = [
+    otc_setup_revenue = [
         new_racks[i]
         * otc_fee[i]
         for i in range(years)
@@ -200,7 +249,7 @@ def compute_revenue(user_inputs, assumptions):
 
     seats_sold = [
         occupied_racks[i]
-        * assumptions["seats_per_rack_ratio"]
+        * assumptions["seats_per_rack"]
         for i in range(years)
     ]
 
@@ -212,22 +261,16 @@ def compute_revenue(user_inputs, assumptions):
     ]
 
     # ---------------------------------
-    # MANAGED REVENUE
+    # MANAGED SERVICES REVENUE
     # ---------------------------------
-
-    penetration = (
-        assumptions["managed_services_penetration"]
-        if facility_type == "retail_colo"
-        else 0.0
-    )
 
     managed_racks = [
         occupied_racks[i]
-        * penetration
+        * assumptions["managed_services_penetration"]
         for i in range(years)
     ]
 
-    managed_revenue = [
+    managed_services_revenue = [
         managed_racks[i]
         * managed_mrc[i]
         * 12
@@ -235,29 +278,77 @@ def compute_revenue(user_inputs, assumptions):
     ]
 
     # ---------------------------------
-    # TOTAL REVENUE
+    # CROSS CONNECT REVENUE
     # ---------------------------------
 
-    total_revenue = []
+    cross_connect_revenue = [
+        occupied_racks[i]
+        * assumptions["cross_connect_penetration"]
+        * cross_connect_fee[i]
+        * 12
+        for i in range(years)
+    ]
 
-    for i in range(years):
+    # ---------------------------------
+    # REMOTE HANDS REVENUE
+    # ---------------------------------
 
-        total_revenue.append(
-            rack_revenue[i]
-            + otc_revenue[i]
-            + power_revenue[i]
-            + seats_revenue[i]
-            + managed_revenue[i]
-        )
+    remote_hands_revenue = [
+        occupied_racks[i]
+        * assumptions["remote_hands_penetration"]
+        * remote_hands_fee[i]
+        * 12
+        for i in range(years)
+    ]
+
+    # ---------------------------------
+    # PROFESSIONAL SERVICES REVENUE
+    # ---------------------------------
+
+    professional_services_revenue = [
+        occupied_racks[i]
+        * assumptions["professional_services_penetration"]
+        * prof_services_fee[i]
+        * 12
+        for i in range(years)
+    ]
+
+    # ---------------------------------
+    # DR SERVICES REVENUE
+    # ---------------------------------
+
+    dr_services_revenue = [
+        occupied_racks[i]
+        * assumptions["dr_services_penetration"]
+        * dr_services_fee[i]
+        * 12
+        for i in range(years)
+    ]
+
+    # ---------------------------------
+    # GROSS REVENUE → DOT → NET
+    # ---------------------------------
+
+    gross_revenue = [
+        recurring_colo_revenue[i]
+        + otc_setup_revenue[i]
+        + power_revenue[i]
+        + seats_revenue[i]
+        + managed_services_revenue[i]
+        + cross_connect_revenue[i]
+        + remote_hands_revenue[i]
+        + professional_services_revenue[i]
+        + dr_services_revenue[i]
+        for i in range(years)
+    ]
 
     dot_deduction = [
         x * assumptions["dot_share_pct"]
-        for x in total_revenue
+        for x in gross_revenue
     ]
 
     net_revenue = [
-        total_revenue[i]
-        - dot_deduction[i]
+        gross_revenue[i] - dot_deduction[i]
         for i in range(years)
     ]
 
@@ -266,9 +357,9 @@ def compute_revenue(user_inputs, assumptions):
     # ---------------------------------
 
     assert all(
-        x <= total_racks
-        for x in occupied_racks
-    ), "Occupied racks exceed capacity"
+        occupied_racks[i] <= cumulative_deployed[i]
+        for i in range(years)
+    ), "Occupied racks exceed deployed capacity"
 
     assert all(
         x >= 0
@@ -293,8 +384,8 @@ def compute_revenue(user_inputs, assumptions):
 
             "years": list(
                 range(
-                    2026,
-                    2026 + years
+                    start_year,
+                    start_year + years
                 )
             )
         },
@@ -319,34 +410,44 @@ def compute_revenue(user_inputs, assumptions):
 
             "managed_mrc": managed_mrc,
 
-            "power_revenue_per_rack":
-                power_revenue_per_rack
+            "power_revenue_per_rack": [
+                x / divisor
+                for x in power_revenue_per_rack
+            ]
         },
 
         "revenue_streams": {
 
-            "rack_revenue": rack_revenue,
+            "recurring_colo_revenue": recurring_colo_revenue,
 
-            "otc_revenue": otc_revenue,
+            "otc_setup_revenue": otc_setup_revenue,
 
             "power_revenue": power_revenue,
 
             "seats_revenue": seats_revenue,
 
-            "managed_revenue": managed_revenue
-        },
+            "managed_services_revenue": managed_services_revenue,
 
-        "financials": {
+            "cross_connect_revenue": cross_connect_revenue,
 
-            "power_cost": power_cost,
+            "remote_hands_revenue": remote_hands_revenue,
 
-            "power_margin": power_margin,
+            "professional_services_revenue": professional_services_revenue,
 
-            "total_revenue": total_revenue,
+            "dr_services_revenue": dr_services_revenue,
+
+            "gross_revenue": gross_revenue,
 
             "dot_deduction": dot_deduction,
 
             "net_revenue": net_revenue
+        },
+
+        "power_detail": {
+
+            "power_cost": power_cost,
+
+            "power_margin": power_margin
         },
 
         "assumption_register": assumptions.copy()
@@ -379,11 +480,11 @@ if __name__ == "__main__":
         "Occupied Racks":
             output["drivers"]["occupied_racks"],
 
-        "Rack Revenue":
-            output["revenue_streams"]["rack_revenue"],
+        "Colo Revenue":
+            output["revenue_streams"]["recurring_colo_revenue"],
 
         "OTC Revenue":
-            output["revenue_streams"]["otc_revenue"],
+            output["revenue_streams"]["otc_setup_revenue"],
 
         "Power Revenue":
             output["revenue_streams"]["power_revenue"],
@@ -392,13 +493,25 @@ if __name__ == "__main__":
             output["revenue_streams"]["seats_revenue"],
 
         "Managed Revenue":
-            output["revenue_streams"]["managed_revenue"],
+            output["revenue_streams"]["managed_services_revenue"],
 
-        "Total Revenue":
-            output["financials"]["total_revenue"],
+        "Cross Connect":
+            output["revenue_streams"]["cross_connect_revenue"],
+
+        "Remote Hands":
+            output["revenue_streams"]["remote_hands_revenue"],
+
+        "Prof Services":
+            output["revenue_streams"]["professional_services_revenue"],
+
+        "DR Services":
+            output["revenue_streams"]["dr_services_revenue"],
+
+        "Gross Revenue":
+            output["revenue_streams"]["gross_revenue"],
 
         "Net Revenue":
-            output["financials"]["net_revenue"],
+            output["revenue_streams"]["net_revenue"],
     })
 
     print("\n==============================")
@@ -415,7 +528,7 @@ if __name__ == "__main__":
     print(output["drivers"]["facility_load_kw"])
 
     print("\nNET REVENUE")
-    print(output["financials"]["net_revenue"])
+    print(output["revenue_streams"]["net_revenue"])
 
     print("\nPOWER REVENUE")
     print(output["revenue_streams"]["power_revenue"])
