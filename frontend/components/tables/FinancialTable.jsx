@@ -5,7 +5,7 @@ function fmt(value, format) {
   const n = Number(value);
   if (isNaN(n)) return '—';
   switch (format) {
-    case 'cr':    return n.toFixed(1);
+    case 'cr':    return n.toFixed(2);
     case 'pct':   return (n * 100).toFixed(0) + '%';
     case 'ratio': return n.toFixed(2) + 'x';
     case 'irr':   return n.toFixed(1) + '%';
