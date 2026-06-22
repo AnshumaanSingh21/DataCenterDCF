@@ -267,13 +267,6 @@ def run_model(req: RunRequest):
     eq          = cf["equity"]
     cs          = loan["capital_structure"]
 
-    # Regenerate Excel
-    try:
-        generate(EXCEL_OUT)
-        excel_ready = True
-    except Exception:
-        excel_ready = False
-
     return {
         "years": years,
         "kpis": {
@@ -318,15 +311,20 @@ def run_model(req: RunRequest):
             "dscr":          _row(dscr),
             "closing_debt":  _row(debt_clos),
         },
-        "excel_ready": excel_ready,
+        "excel_ready": True,
     }
 
 
 @app.get("/api/download")
 def download_excel():
-    path = os.path.abspath(EXCEL_OUT)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Excel not yet generated. Run model first.")
+    try:
+        path = os.path.abspath(EXCEL_OUT)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        generate(path)
+    except Exception as exc:
+        print(f"[Excel] generation failed: {exc}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Excel generation failed: {exc}")
     return FileResponse(
         path,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
