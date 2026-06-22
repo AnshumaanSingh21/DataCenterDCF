@@ -319,6 +319,13 @@ def compute_capex(
         assumptions[
             "approval_cost_crore"
         ]
+
+        +
+
+        assumptions.get(
+            "misc_infrastructure_cost_crore",
+            0
+        )
     )
     # ----------------------------------
     # PRE OP

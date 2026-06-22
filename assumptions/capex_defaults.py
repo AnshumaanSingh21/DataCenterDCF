@@ -39,6 +39,10 @@ def get_default_capex_assumptions():
 
         "approval_cost_crore": 5.0,
 
+        # Utility HT line + metering, facade/external works,
+        # commissioning & testing, compound wall + landscaping
+        "misc_infrastructure_cost_crore": 18.0,
+
         "pre_op_pct": 0.15,
 
        
@@ -63,15 +67,15 @@ def get_default_capex_assumptions():
         # CIVIL & INTERIORS
         # =====================================================
 
-        "shell_cost_per_rack": 0.040,
+        "shell_cost_per_rack": 0.063,
 
-        "interiors_cost_per_rack": 0.010,
+        "interiors_cost_per_rack": 0.015,
 
-        "security_system_cost_per_rack": 0.004,
+        "security_system_cost_per_rack": 0.007,
 
         # Legacy Aggregated
 
-        "civil_cost_per_rack": 0.054,
+        "civil_cost_per_rack": 0.085,
 
         # =====================================================
         # ELECTRICAL
@@ -167,7 +171,7 @@ def get_default_capex_assumptions():
 
         "pdus_per_rack": 2,
 
-        "pdu_panel_cost": 175000,
+        "pdu_panel_cost": 65000,
 
         "ups_db_per_20_racks": 4,
 
@@ -179,7 +183,7 @@ def get_default_capex_assumptions():
 
         "earthing_per_rack": 1,
 
-        "earthing_cost": 25000,
+        "earthing_cost": 1500,
 
         # =====================================================
         # CABLING
@@ -193,7 +197,7 @@ def get_default_capex_assumptions():
 
         "cable_tray_cost_per_ft": 250,
 
-        "ats_per_rack": 1,
+        "ats_per_rack": 0,
 
         "ats_cost": 36000,
 
@@ -221,7 +225,7 @@ def get_default_capex_assumptions():
         # MECHANICAL
         # =====================================================
 
-        "mechanical_cost_per_rack": 0.00891,
+        "mechanical_cost_per_rack": 0.015,
 
                 # =====================================================
         # NETWORK
@@ -304,7 +308,7 @@ def get_default_capex_assumptions():
 
         "network_equipment_refresh_cycle_years": 5,
 
-        "it_hardware_cost_per_rack": 0.021,
+        "it_hardware_cost_per_rack": 0.003,
 
         # =====================================================
         # REPLACEMENT CYCLES

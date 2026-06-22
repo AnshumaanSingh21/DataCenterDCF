@@ -20,7 +20,7 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
         0.85,
     ],
 
-    "pue": 1.4,
+    "pue": 1.6,
 
     "dot_share_pct": 0.0,
 

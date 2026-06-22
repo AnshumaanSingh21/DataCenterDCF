@@ -6,9 +6,9 @@ def get_default_loan_assumptions():
         # CAPITAL STRUCTURE
         # =====================================
 
-        "debt_pct": 0.60,
+        "debt_pct": 0.50,
 
-        "equity_pct": 0.40,
+        "equity_pct": 0.50,
 
         # =====================================
         # LOAN TERMS
@@ -18,7 +18,7 @@ def get_default_loan_assumptions():
 
         "loan_tenure_years": 10,
 
-        "moratorium_years": 1,
+        "moratorium_years": 3,
 
         # =====================================
         # REPAYMENT

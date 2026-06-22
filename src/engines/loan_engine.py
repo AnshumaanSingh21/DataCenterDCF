@@ -27,7 +27,7 @@ def compute_loan(
 
     debt_pct = assumptions["debt_pct"]
 
-    equity_pct = assumptions["equity_pct"]
+    equity_pct = 1.0 - debt_pct
 
     interest_rate = (
         assumptions["interest_rate"]

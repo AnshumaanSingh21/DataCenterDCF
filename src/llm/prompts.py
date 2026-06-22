@@ -68,7 +68,9 @@ def build_batch_extraction_prompt(
     facility_type,
     context_text,
     assumption_names,
-    kw_per_rack=None
+    kw_per_rack=None,
+    total_racks=None,
+    total_mw=None
 ):
 
     assumption_block = ""
@@ -100,10 +102,22 @@ def build_batch_extraction_prompt(
         else ""
     )
 
+    size_line = ""
+    if total_racks is not None and total_mw is not None:
+        pricing_guidance = (
+            "retail pricing applies (multiple tenants, ₹50k-80k/rack/month)"
+            if facility_type in ("retail_colo", "retail")
+            else "wholesale/single-tenant pricing applies (₹30k-45k/rack/month)"
+        )
+        size_line = (
+            f"Facility size  : {total_racks} racks / {total_mw} MW IT load — {pricing_guidance}"
+        )
+
     return f"""You are a financial data extraction engine for an Indian data center investment model.
 
 Location      : {location}
 Facility type : {facility_type}
+{size_line}
 {density_line}
 
 ---

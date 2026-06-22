@@ -26,7 +26,9 @@ from assumptions.revenue_defaults import (
 )
 
 
-def market_agent(location, facility_type="retail_colo"):
+def market_agent(location, facility_type="retail_colo", total_racks=1000, kw_per_rack=4.5):
+
+    total_mw = round(total_racks * kw_per_rack / 1000, 1)
 
     # --------------------------------
     # RAG Retrieval
@@ -34,7 +36,8 @@ def market_agent(location, facility_type="retail_colo"):
 
     query = (
         f"{location} data center colocation "
-        f"pricing rack rental power tariff"
+        f"{total_racks} rack {total_mw}MW "
+        f"pricing rack rental power tariff electricity"
     )
 
     results = retrieve(query, k=10)
@@ -102,7 +105,9 @@ def market_agent(location, facility_type="retail_colo"):
         context=context,
         location=location,
         facility_type=facility_type,
-        kw_per_rack=kw_per_rack
+        kw_per_rack=kw_per_rack,
+        total_racks=total_racks,
+        total_mw=total_mw
     )
 
     return output
