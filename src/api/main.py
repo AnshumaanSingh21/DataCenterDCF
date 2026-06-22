@@ -12,7 +12,7 @@ import traceback
 # ── RAG feature flag ──────────────────────────────────────────────────────────
 # Set True to enrich defaults with market-extracted values from the knowledge base.
 # Set False to use validated baseline defaults only.
-USE_RAG = True
+USE_RAG = False
 
 from assumptions.revenue_defaults import get_default_revenue_assumptions
 from src.agents.market_agent import market_agent
