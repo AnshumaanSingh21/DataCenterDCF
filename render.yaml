@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: datacenter-dcf-api
+    runtime: python
+    branch: v2
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SENTENCE_TRANSFORMERS_HOME
+        value: /opt/render/project/.cache/sentence_transformers
+      - key: TRANSFORMERS_CACHE
+        value: /opt/render/project/.cache/transformers
+    autoDeploy: true
