@@ -43,7 +43,7 @@ def get_default_capex_assumptions():
         # commissioning & testing, compound wall + landscaping
         "misc_infrastructure_cost_crore": 18.0,
 
-        "pre_op_pct": 0.15,
+        "pre_op_pct": 0.10,
 
        
 
@@ -370,3 +370,13 @@ def get_default_capex_assumptions():
 
         "vendor_pricing_adjustment": 1.00
     }
+
+
+LOCATION_LAND_COST = {
+    "Mumbai":    7000,
+    "Pune":      4000,
+    "Hyderabad": 3000,
+    "Bangalore": 5000,
+    "Chennai":   3500,
+    "Delhi NCR": 5000,
+}

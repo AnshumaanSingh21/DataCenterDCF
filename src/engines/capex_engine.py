@@ -4,6 +4,8 @@ from src.engines.site_sizing_engine import (
     compute_site_sizing
 )
 
+from assumptions.capex_defaults import LOCATION_LAND_COST
+
 from src.engines.it_sizing_engine import (
     compute_it_sizing
 )
@@ -78,6 +80,10 @@ def compute_capex(
     # ----------------------------------
     # SITE SIZING
     # ----------------------------------
+
+    location = user_inputs.get("location", "")
+    if location in LOCATION_LAND_COST:
+        assumptions["land_cost_per_sqft_rs"] = LOCATION_LAND_COST[location]
 
     site_sizing = (
 
