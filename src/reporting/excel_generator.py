@@ -173,7 +173,7 @@ def write_asmp(wb, P):
     ws = wb.create_sheet("ASMP")
     _col_widths(ws)
     _title_row(ws, "ASSUMPTIONS", "All inputs — change here only")
-    ws.freeze_panes = "C4"
+    ws.freeze_panes = "C5"
 
     cc = P['cap']['capex_components']
     rev_a = get_default_revenue_assumptions()
@@ -191,11 +191,7 @@ def write_asmp(wb, P):
     lease_up   = rev_a['lease_up_curve']
 
     r = 3  # row counter (rows 1–2 = title/subtitle)
-    # Column header row (no year columns — single Value column)
-    _w(ws, r, COL_LBL,  "Assumption",  bold=True, fill=LTGREY, ah="left")
-    _w(ws, r, COL_UNIT, "Unit",        bold=True, fill=LTGREY, ah="left")
-    _w(ws, r, COL_YR0,  "Value",       bold=True, fill=LTGREY, ah="center")
-    r += 1
+    _yr_hdrs(ws, r, r+1); r += 2  # rows 3,4
 
     def inp(row, label, unit, val, fmt=FMT_CR, col=None, ah="right"):
         _lbl(ws, row, label, unit)
