@@ -1,7 +1,10 @@
-const PROD_URL = 'https://datacenterdcf.onrender.com';
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.length > 0)
-  ? process.env.NEXT_PUBLIC_API_URL
-  : PROD_URL;
+function getApiBase() {
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+  }
+  return 'https://datacenterdcf.onrender.com';
+}
+const API_BASE = getApiBase();
 
 export async function getDefaults() {
   const res = await fetch(`${API_BASE}/api/defaults`);
