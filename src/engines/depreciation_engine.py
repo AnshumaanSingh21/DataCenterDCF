@@ -1,30 +1,34 @@
 import pandas as pd
 
 
-def _slm_series(capex, life_years, years):
-    """Annual SLM depreciation charge for each year given phased CapEx additions."""
+def _slm_series(capex, life_years, years, construction_years=0):
+    """Annual SLM depreciation charge for each year given phased CapEx additions.
+    Assets purchased during construction are only depreciated once commissioned.
+    """
     dep = [0.0] * years
     annual_rate = 1.0 / life_years
     for purchase_year in range(years):
         c = capex[purchase_year]
         if c == 0:
             continue
-        for future_year in range(purchase_year, years):
+        dep_start = max(purchase_year, construction_years)
+        for future_year in range(dep_start, years):
             dep[future_year] += c * annual_rate
     return dep
 
 
-def _wdv_series(capex, wdv_rate, years):
+def _wdv_series(capex, wdv_rate, years, construction_years=0):
     """Annual WDV depreciation charge (IT Act).
-    Each vintage's WDV declines at (1 - rate) per year.
+    Each vintage's WDV declines at (1 - rate) per year from commissioning date.
     """
     dep = [0.0] * years
     for purchase_year in range(years):
         c = capex[purchase_year]
         if c == 0:
             continue
-        for future_year in range(purchase_year, years):
-            years_elapsed = future_year - purchase_year
+        dep_start = max(purchase_year, construction_years)
+        for future_year in range(dep_start, years):
+            years_elapsed = future_year - dep_start
             wdv_opening = c * (1 - wdv_rate) ** years_elapsed
             dep[future_year] += wdv_opening * wdv_rate
     return dep
@@ -42,17 +46,19 @@ def compute_depreciation(capex_output, assumptions):
     software_capex    = capex_output["capex_components"]["software_capex"]
     it_hardware_capex = capex_output["capex_components"]["it_hardware_capex"]
 
+    construction_years = assumptions.get("construction_years", 0)
+
     # ----------------------------------
     # BOOK DEPRECIATION (Companies Act SLM)
     # Used for P&L / EBIT reporting.
     # ----------------------------------
 
-    civil_dep       = _slm_series(civil_capex,       assumptions["civil_life_years"],       years)
-    electrical_dep  = _slm_series(electrical_capex,  assumptions["electrical_life_years"],  years)
-    mechanical_dep  = _slm_series(mechanical_capex,  assumptions["mechanical_life_years"],  years)
-    network_dep     = _slm_series(network_capex,     assumptions["network_life_years"],     years)
-    software_dep    = _slm_series(software_capex,    assumptions["software_life_years"],    years)
-    it_dep          = _slm_series(it_hardware_capex, assumptions["it_hardware_life_years"], years)
+    civil_dep       = _slm_series(civil_capex,       assumptions["civil_life_years"],       years, construction_years)
+    electrical_dep  = _slm_series(electrical_capex,  assumptions["electrical_life_years"],  years, construction_years)
+    mechanical_dep  = _slm_series(mechanical_capex,  assumptions["mechanical_life_years"],  years, construction_years)
+    network_dep     = _slm_series(network_capex,     assumptions["network_life_years"],     years, construction_years)
+    software_dep    = _slm_series(software_capex,    assumptions["software_life_years"],    years, construction_years)
+    it_dep          = _slm_series(it_hardware_capex, assumptions["it_hardware_life_years"], years, construction_years)
 
     book_depreciation = [
         civil_dep[i] + electrical_dep[i] + mechanical_dep[i]
@@ -77,12 +83,12 @@ def compute_depreciation(capex_output, assumptions):
     # Used for taxable income computation only.
     # ----------------------------------
 
-    civil_tax_dep       = _wdv_series(civil_capex,       assumptions["civil_wdv_rate"],       years)
-    electrical_tax_dep  = _wdv_series(electrical_capex,  assumptions["electrical_wdv_rate"],  years)
-    mechanical_tax_dep  = _wdv_series(mechanical_capex,  assumptions["mechanical_wdv_rate"],  years)
-    network_tax_dep     = _wdv_series(network_capex,     assumptions["network_wdv_rate"],     years)
-    software_tax_dep    = _wdv_series(software_capex,    assumptions["software_wdv_rate"],    years)
-    it_tax_dep          = _wdv_series(it_hardware_capex, assumptions["it_hardware_wdv_rate"], years)
+    civil_tax_dep       = _wdv_series(civil_capex,       assumptions["civil_wdv_rate"],       years, construction_years)
+    electrical_tax_dep  = _wdv_series(electrical_capex,  assumptions["electrical_wdv_rate"],  years, construction_years)
+    mechanical_tax_dep  = _wdv_series(mechanical_capex,  assumptions["mechanical_wdv_rate"],  years, construction_years)
+    network_tax_dep     = _wdv_series(network_capex,     assumptions["network_wdv_rate"],     years, construction_years)
+    software_tax_dep    = _wdv_series(software_capex,    assumptions["software_wdv_rate"],    years, construction_years)
+    it_tax_dep          = _wdv_series(it_hardware_capex, assumptions["it_hardware_wdv_rate"], years, construction_years)
 
     tax_depreciation = [
         civil_tax_dep[i] + electrical_tax_dep[i] + mechanical_tax_dep[i]

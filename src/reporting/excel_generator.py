@@ -292,8 +292,9 @@ def write_asmp(wb, P):
     AR['gna_pct']    = r; inp(r, "G&A (% of net revenue)",       "%",        0.03,          FMT_P2); r += 1
     AR['mkt_pct_start']  = r; inp(r, "Marketing — Year 1 (% of net revenue)",  "%", 0.01,   FMT_P2); r += 1
     AR['mkt_pct_end']    = r; inp(r, "Marketing — Year 10 (% of net revenue)", "%", 0.0025, FMT_P2); r += 1
-    AR['maint_cx']       = r; inp(r, "Maintenance CapEx rate (% of MEP)",       "%", 0.015,  FMT_P2); r += 1
-    AR['maint_warranty'] = r; inp(r, "OEM warranty period",                    "yrs", 3,     FMT_INT); r += 1
+    AR['maint_cx']           = r; inp(r, "Maintenance CapEx rate (% of MEP)",       "%", 0.015,  FMT_P2);  r += 1
+    AR['maint_warranty']     = r; inp(r, "OEM warranty period",                    "yrs", 3,     FMT_INT); r += 1
+    AR['construction_years'] = r; inp(r, "Construction period",                    "yrs", 1,     FMT_INT); r += 1
 
     # ── DEPRECIATION ──────────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "DEPRECIATION — USEFUL LIVES (SLM)"); r += 1
@@ -627,7 +628,7 @@ def write_capex(wb):
     _lbl(ws, r, "Maintenance CapEx (MEP-based, post-OEM warranty)", "Cr")
     for j in range(N):
         eligible_terms = "+".join(
-            f"IF({cl(j)}4>={DEPLOY_XIDX[p]}+{_asmp('maint_warranty')},"
+            f"IF({cl(j)}4>=MAX({DEPLOY_XIDX[p]},{_asmp('construction_years')}+1)+{_asmp('maint_warranty')},"
             f"CAPEX!${DEPLOY_XCOL[p]}${CAP_R['total']}-CAPEX!${DEPLOY_XCOL[p]}${CAP_R['civil']},0)"
             for p in range(3)
         )
