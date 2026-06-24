@@ -43,7 +43,7 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
     # Rs 50,000/rack/month space charge (power billed separately).
     # All-in to tenant ~Rs 86,000-93,000/month (space + 4.5 kW metered power).
     # Market range Mumbai Tier III greenfield 2026: Rs 65,000-100,000/month all-in.
-    "rack_price_per_rack_crore": 0.005,
+    "rack_price_per_rack_crore": 0.0055,
 
     "rack_price_escalation": 0.05,
 
@@ -218,7 +218,7 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
 
     "kw_per_rack": 6.0,
 
-    "rack_mrc_crore": 0.005,
+    "rack_mrc_crore": 0.0055,
 
     "rack_mrc_escalation": 0.05,
 
