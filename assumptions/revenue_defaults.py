@@ -8,16 +8,16 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
     # =====================================================
 
     "lease_up_curve": [
-        0.00,   # Year 1 — construction, not operational
-        0.10,
-        0.16,
-        0.24,
-        0.33,
-        0.42,
-        0.51,
-        0.60,
-        0.69,
-        0.78,
+        0.000,  # Year 1 — construction, not operational
+        0.054,  # Year 2  (+54 racks)
+        0.122,  # Year 3  (+68 racks, +14 vs prior year)
+        0.204,  # Year 4  (+82 racks, +14)
+        0.300,  # Year 5  (+96 racks, +14)
+        0.410,  # Year 6  (+110 racks, +14 — plateau begins)
+        0.520,  # Year 7  (+110 racks, steady)
+        0.630,  # Year 8  (+110 racks, steady)
+        0.740,  # Year 9  (+110 racks, steady)
+        0.850,  # Year 10 (+110 racks, steady) — 85% occupancy
     ],
 
     "pue": 1.6,
