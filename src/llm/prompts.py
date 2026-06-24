@@ -27,6 +27,35 @@ _CITY_MRC_RANGE = {
 # Borrower class context based on project description
 _BORROWER_CLASS = "Greenfield, first project, no operational track record"
 
+# City-specific DC-grade construction cost ranges (Rs/sqft)
+# Covers: building shell + raised floor + false ceiling + fire suppression
+# + access control + interiors. Excludes land, MEP, IT hardware.
+# Source: CBRE India Construction Cost Guide 2024, JLL India DC Build Cost Survey 2024
+_CITY_CONSTRUCTION_COST = {
+    "Mumbai":    (6_000, 8_500),   # Highest — MCGM compliance, premium labor, coastal conditions
+    "Bangalore": (5_000, 7_000),   # BBMP compliance, moderate labor market
+    "Delhi NCR": (5_000, 7_000),   # Similar to Bangalore; seismic zone consideration
+    "Hyderabad": (4_500, 6_000),   # Lower labor costs, HMDA approval overhead
+    "Chennai":   (4_500, 6_000),   # Moderate; cyclone-resistant design adds ~5-8%
+    "Pune":      (4_500, 6_500),   # Between Mumbai and Hyderabad
+}
+
+# Tier III N+1 DC equipment CapEx benchmarks (Cr per MW of IT load)
+# Source: JM Financial Data Centre 101 (March 2025), CBRE India DC Cost Benchmarks 2024
+# These are EQUIPMENT-ONLY costs (no civil, no land, no soft costs)
+_ELECTRICAL_CAPEX_PER_MW = {
+    "retail_colo": (3.5, 5.5),    # UPS, batteries, DGs, transformers, switchgear, cabling — N+1
+    "wholesale":   (3.0, 5.0),    # Slightly simpler tenant fit-out; similar core infra
+    "ai_hpc":      (5.0, 8.0),    # Higher power density → larger UPS, DG, transformer capacity
+    "hyperscale":  (3.0, 5.0),    # Bulk procurement advantage; simpler redundancy design
+}
+_MECHANICAL_CAPEX_PER_MW = {
+    "retail_colo": (2.5, 4.0),    # Chilled water plant + CRAC/CRAH + cooling towers — N+1
+    "wholesale":   (2.0, 3.5),    # Similar cooling infra, slightly less redundancy
+    "ai_hpc":      (4.0, 7.0),    # Liquid/immersion cooling significantly more expensive
+    "hyperscale":  (2.0, 3.5),    # Scale economics; standardised cooling modules
+}
+
 
 def build_market_intelligence_prompt(
     location: str,
@@ -35,6 +64,7 @@ def build_market_intelligence_prompt(
     total_mw: float,
     kw_per_rack: float,
     year: int,
+    effective_sqft_per_rack: float = 100.0,
 ) -> str:
     """
     Direct LLM market intelligence prompt — no RAG context needed.
@@ -60,6 +90,13 @@ def build_market_intelligence_prompt(
     mrc_range = _CITY_MRC_RANGE.get(location, (30_000, 1_50_000))
     power_component_low  = round(kw_per_rack * 730 * 9.0)
     power_component_high = round(kw_per_rack * 730 * 11.0)
+
+    construction_range = _CITY_CONSTRUCTION_COST.get(location, (4_000, 8_000))
+    civil_cost_low  = round(construction_range[0] * effective_sqft_per_rack / 1e7, 4)
+    civil_cost_high = round(construction_range[1] * effective_sqft_per_rack / 1e7, 4)
+
+    elec_range = _ELECTRICAL_CAPEX_PER_MW.get(facility_type, (3.5, 5.5))
+    mech_range = _MECHANICAL_CAPEX_PER_MW.get(facility_type, (2.5, 4.0))
 
     facility_pricing_note = {
         "retail_colo": (
@@ -175,6 +212,80 @@ exclude it and note this in reasoning.
 - Source: CARE Ratings, ICRA credit reports on Sify, CtrlS, Yotta (2025)
 - Tenor assumed: 10–12 years senior secured
 
+--- CIVIL CONSTRUCTION COST (building shell + fit-out, excluding land and MEP) ---
+This is the per-rack civil cost: construction of the data center building including raised floor,
+false ceiling, fire suppression, access control, interiors. Does NOT include land, UPS, cooling,
+network, or IT hardware.
+
+Derivation path:
+  Step 1: Identify construction cost per sqft for {location} (DC-grade air-conditioned building)
+  Step 2: Multiply by effective sqft per rack = {effective_sqft_per_rack:.0f} sqft/rack
+           (This is pre-computed from our model: data hall + corridors + support spaces)
+  Step 3: civil_cost_cr_per_rack = construction_cost_rs_per_sqft × {effective_sqft_per_rack:.0f} / 1,00,00,000
+
+Anchor data for {location}:
+- DC-grade construction cost: ₹{construction_range[0]:,}–₹{construction_range[1]:,}/sqft
+- Includes: building shell, raised floor (600mm), false ceiling, fire suppression (FM200/Novec),
+  precision air-conditioning room preparation, access control cabling, interiors finishing
+- Excludes: land cost, MEP equipment (UPS, cooling, DG), IT hardware, external infrastructure
+- Source: CBRE India Construction Cost Guide 2024, JLL India DC Build Cost Survey 2024,
+  Turner & Townsend India Construction Intelligence Report 2024
+- City premium drivers for {location}: construction labor market, local regulatory compliance
+  (municipal approvals), material procurement lead times, foundation requirements
+
+Implied civil_cost_cr_per_rack range: ₹{civil_cost_low} Cr – ₹{civil_cost_high} Cr per rack
+Derive a single point estimate. Prefer the midpoint unless {location} has specific cost pressures.
+If confidence is medium or high, show the arithmetic explicitly in reasoning.
+
+--- ELECTRICAL CAPEX PER MW (equipment only: UPS, batteries, DG, transformers, switchgear, cabling) ---
+This is total electrical infrastructure cost per MW of IT load. Does NOT include civil, land,
+mechanical cooling, or IT hardware.
+
+Redundancy tier: Tier III N+1 (assume this unless facility_type overrides it).
+- AI/HPC may require 2N for electrical: increase estimate by 25–40%.
+
+Anchor data (JM Financial Data Centre 101, March 2025; CBRE India DC Cost Benchmarks 2024):
+- Retail colo / Wholesale (N+1): ₹{elec_range[0]}–₹{elec_range[1]} Cr/MW IT load
+  Components: HT panel + transformers (~15%), UPS systems (~25%), battery banks (~20%),
+  DG gensets (~20%), PDUs + cabling + earthing (~20%)
+- AI/HPC (higher power density, 2N considered): ₹5.0–₹8.0 Cr/MW
+  Additional cost: oversized UPS frames, larger DG capacity, denser cabling infrastructure
+- Note: Per MW costs decline slightly at scale (bulk procurement savings ~8–12% above 5MW)
+  For {total_mw} MW facility: apply {'-8 to -12% scale discount' if total_mw > 5 else 'no scale discount (sub-5MW)'}
+
+Derivation rule:
+  electrical_capex_cr_per_mw = total electrical equipment cost / IT load in MW
+  Do NOT include civil or mechanical costs in this figure.
+  Cross-check: electrical should be 35–45% of total construction CapEx (excl. land, soft costs)
+
+--- MECHANICAL CAPEX PER MW (cooling: chilled water plant, CRAC/CRAH, cooling towers, piping) ---
+This is total mechanical cooling infrastructure per MW of IT load. Does NOT include civil, land,
+electrical, or IT hardware.
+
+Cooling technology assumed: {
+    'Chilled water + CRAC/CRAH (standard for retail colo Tier III)'
+    if facility_type in ('retail_colo', 'wholesale')
+    else 'Liquid/immersion cooling + residual air cooling (AI/HPC)'
+    if facility_type == 'ai_hpc'
+    else 'Chilled water plant (hyperscale standardised cooling modules)'
+}
+
+Anchor data (JM Financial Data Centre 101, March 2025; CBRE India DC Cost Benchmarks 2024):
+- Retail colo / Wholesale (chilled water, N+1): ₹{mech_range[0]}–₹{mech_range[1]} Cr/MW IT load
+  Components: chiller plant (~35%), CRAC/CRAH units (~30%), cooling towers (~15%),
+  chilled water piping + insulation (~12%), BMS integration (~8%)
+- AI/HPC (liquid cooling infrastructure): ₹4.0–₹7.0 Cr/MW
+  Additional cost: CDU (Coolant Distribution Units), rear-door heat exchangers,
+  liquid-to-liquid heat exchangers, dedicated chilled water loop for liquid cooling
+- Note: PUE of {0} affects cooling sizing — lower PUE = more efficient cooling = lower mechanical cost
+  At PUE ~1.6 for Tier III: cooling handles ~37.5% of total facility load (0.6/1.6 = 37.5%)
+- Climate adjustment: {location} climate impacts free-cooling hours and chiller sizing
+  Mumbai (hot + humid): limited free-cooling hours → higher mechanical CapEx vs. Hyderabad
+
+Derivation rule:
+  mechanical_capex_cr_per_mw = total cooling equipment cost / IT load in MW
+  Cross-check: mechanical should be 20–30% of total construction CapEx (excl. land, soft costs)
+
 === INTERNAL PARITY CHECK ===
 After deriving all values, verify consistency:
   implied_all_in = rack_mrc + ({kw_per_rack} kW × 730 hrs × (utility_tariff + markup))
@@ -192,6 +303,9 @@ Return null (not a guess) if value falls outside these bounds:
 - land_cost_rs_per_sqft          : 1,000 – 20,000
 - pue                            : 1.2 – 2.2
 - interest_rate_pct              : 7.0 – 15.0
+- civil_cost_cr_per_rack         : {civil_cost_low} – {civil_cost_high}
+- electrical_capex_cr_per_mw     : {elec_range[0]} – {elec_range[1]}
+- mechanical_capex_cr_per_mw     : {mech_range[0]} – {mech_range[1]}
 
 === OUTPUT FORMAT ===
 Return ONLY valid JSON. No prose, no markdown outside the JSON.
@@ -224,6 +338,21 @@ Return ONLY valid JSON. No prose, no markdown outside the JSON.
   }},
   "interest_rate_pct": {{
     "reasoning": "...",
+    "value": <number or null>,
+    "confidence": "..."
+  }},
+  "civil_cost_cr_per_rack": {{
+    "reasoning": "<construction cost Rs/sqft for {location}> × <{effective_sqft_per_rack:.0f} sqft/rack> / 1,00,00,000 = <value> Cr/rack",
+    "value": <number or null>,
+    "confidence": "..."
+  }},
+  "electrical_capex_cr_per_mw": {{
+    "reasoning": "<component breakdown: UPS + batteries + DG + transformers + switchgear + cabling> → <total per MW>",
+    "value": <number or null>,
+    "confidence": "..."
+  }},
+  "mechanical_capex_cr_per_mw": {{
+    "reasoning": "<component breakdown: chiller plant + CRAC/CRAH + cooling towers + piping + BMS> → <total per MW>",
     "value": <number or null>,
     "confidence": "..."
   }},
