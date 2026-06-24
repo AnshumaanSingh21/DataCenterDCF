@@ -90,26 +90,32 @@ def compute_opex(
     # HOUSEKEEPING
     # -----------------------------
 
+    construction_years = assumptions.get("construction_years", 0)
+
     housekeeping_cost = [
 
-    facility_sqft
+        0.0 if i < construction_years else (
 
-    * assumptions[
-        "housekeeping_rate_per_sqft"
+            facility_sqft
+
+            * assumptions[
+                "housekeeping_rate_per_sqft"
+            ]
+
+            * (
+
+                (1 + assumptions[
+                    "housekeeping_escalation"
+                ]) ** i
+
+            )
+
+            / 10000000
+
+        )
+
+        for i in range(years)
     ]
-
-    * (
-
-        (1 + assumptions[
-            "housekeeping_escalation"
-        ]) ** i
-
-    )
-
-    / 10000000
-
-    for i in range(years)
-]
 
     # -----------------------------
     # MAINTENANCE (ASSET BASED)
@@ -202,6 +208,10 @@ def compute_opex(
     maintenance_cost = []
 
     for i in range(years):
+
+        if i < construction_years:
+            maintenance_cost.append(0.0)
+            continue
 
         maintenance_cost.append(
 
