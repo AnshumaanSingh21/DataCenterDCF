@@ -87,61 +87,30 @@ def compute_loan(
 
         outstanding = loan_amount
 
-        annual_principal = (
-            loan_amount
-            / tenure
-        )
+        annual_principal = loan_amount / tenure
 
-        for yr in range(
-            draw_year,
-            years
-        ):
+        repayment_start = draw_year + moratorium + 1
 
-            opening_balance[yr] = (
-                outstanding
-            )
+        repayment_end = repayment_start + tenure
 
-            interest_payment[yr] = (
-                outstanding
-                * interest_rate
-            )
+        for yr in range(draw_year, years):
 
-            repayment_start = (
-                draw_year
-                + moratorium
-                + 1
-            )
+            opening_balance[yr] = outstanding
 
-            repayment_end = (
-                repayment_start
-                + tenure
-            )
+            interest_payment[yr] = outstanding * interest_rate
 
             if (
-
                 yr >= repayment_start
-
-                and
-
-                yr < repayment_end
-
-                and
-
-                outstanding > 0
+                and yr < repayment_end
+                and outstanding > 0
             ):
-
                 principal_payment[yr] = min(
                     annual_principal,
                     outstanding
                 )
+                outstanding -= principal_payment[yr]
 
-                outstanding -= (
-                    principal_payment[yr]
-                )
-
-            closing_balance[yr] = (
-                outstanding
-            )
+            closing_balance[yr] = outstanding
 
         tranches.append({
 
