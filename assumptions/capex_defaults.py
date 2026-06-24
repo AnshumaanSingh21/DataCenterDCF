@@ -51,11 +51,11 @@ def get_default_capex_assumptions():
         # DEPLOYMENT PLAN
         # =====================================================
 
-        "phase_1_racks": 300,
+        "phase_1_pct": 0.50,
 
-        "phase_2_racks": 300,
+        "phase_2_pct": 0.30,
 
-        "phase_3_racks": 400,
+        "phase_3_pct": 0.20,
 
         "phase_1_year": 0,
 

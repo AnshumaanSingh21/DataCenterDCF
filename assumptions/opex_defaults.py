@@ -88,6 +88,8 @@ def get_default_opex_assumptions():
 
         "marketing_expense_crore": 1.0,
         "marketing_escalation": 0.05,
+        "marketing_pct_start": 0.01,
+        "marketing_pct_end": 0.0025,
 
         # =====================================================
         # CLOUD PARTNER FEES

@@ -146,11 +146,11 @@ def compute_capex(
         assumptions["phase_3_year"]
     ]
 
+    _total_racks = user_inputs["total_racks"]
     phase_racks = [
-
-        assumptions["phase_1_racks"],
-        assumptions["phase_2_racks"],
-        assumptions["phase_3_racks"]
+        round(_total_racks * assumptions["phase_1_pct"]),
+        round(_total_racks * assumptions["phase_2_pct"]),
+        round(_total_racks * assumptions["phase_3_pct"]),
     ]
 
     for phase_idx in range(3):

@@ -317,11 +317,12 @@ def compute_opex(
     # MARKETING
     # -----------------------------
 
-    marketing_cost = escalate(
-        assumptions["marketing_expense_crore"],
-        assumptions["marketing_escalation"],
-        years
-    )
+    mkt_start = assumptions.get("marketing_pct_start", 0.01)
+    mkt_end   = assumptions.get("marketing_pct_end",   0.0025)
+    marketing_cost = [
+        net_revenue[i] * max(mkt_end, mkt_start - (mkt_start - mkt_end) * i / max(years - 1, 1))
+        for i in range(years)
+    ]
 
     # -----------------------------
     # G&A

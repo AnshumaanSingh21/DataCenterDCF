@@ -46,6 +46,8 @@ def compute_cashflow(
     capex         = capex_output["financials"]["total_capex"]
     cumulative_capex = capex_output["financials"]["cumulative_capex"]
     land_cost     = capex_output["site_sizing"]["land_cost_crore"]
+    civil_capex   = capex_output["capex_components"]["civil_capex"]
+    deployment_schedule = capex_output.get("deployment_schedule", [])
 
     change_in_wc  = working_capital_output["financials"]["change_in_working_capital"]
 
@@ -58,9 +60,8 @@ def compute_cashflow(
     equity_pct    = loan_reg.get("equity_pct", 0.40)
     interest_rate = loan_reg.get("interest_rate", 0.10)
 
-    maint_rate    = opex_output.get(
-        "assumption_register", {}
-    ).get("maintenance_capex_rate", 0.01)
+    maint_rate = 0.015
+    warranty_years = 3
 
     # ----------------------------------
     # NOPAT
@@ -72,14 +73,27 @@ def compute_cashflow(
     ]
 
     # ----------------------------------
-    # MAINTENANCE CAPEX (from Year 5)
+    # MAINTENANCE CAPEX
+    # Phase-aware: 1.5% of MEP base (excl. civil + land)
+    # MEP base for each phase eligible only after 3-yr warranty
     # ----------------------------------
 
-    maintenance_capex = [
-        max(cumulative_capex[i] - land_cost, 0) * maint_rate
-        if i >= 4 else 0
+    # MEP capex per year = total - civil (land already in site_level_capex)
+    mep_capex = [
+        max(capex[i] - civil_capex[i], 0)
         for i in range(n)
     ]
+
+    # Cumulative MEP eligible at year i = sum of MEP from phases
+    # deployed at least `warranty_years` years before year i
+    maintenance_capex = []
+    for i in range(n):
+        eligible_mep = sum(
+            mep_capex[j]
+            for j in range(n)
+            if capex[j] > 0 and j <= i and (i - j) >= warranty_years
+        )
+        maintenance_capex.append(eligible_mep * maint_rate)
 
     # ----------------------------------
     # FCFF
