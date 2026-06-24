@@ -294,6 +294,8 @@ def compute_opex(
 
     insurance_cost = [
 
+        0.0 if i < construction_years else
+
         asset_value[i]
 
         * assumptions[
@@ -311,6 +313,8 @@ def compute_opex(
     # -----------------------------
 
     property_tax = [
+
+        0.0 if i < construction_years else
 
         asset_value[i]
 
