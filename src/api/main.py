@@ -138,7 +138,7 @@ def run_pipeline(req: RunRequest):
             print(f"[RAG] Clamped {rag_val:.6f} -> {clamped:.6f} (+-20% of default {default_val:.6f})")
         return clamped
 
-    _kw = req.kw_per_rack if req.kw_per_rack is not None else rev_a.get("kw_per_rack", 4.5)
+    _kw = req.kw_per_rack if req.kw_per_rack is not None else rev_a.get("kw_per_rack", 6.0)
     if USE_RAG:
         rag = _get_rag_assumptions(req.location, req.facility_type, req.total_racks, _kw)
         _rev_map = {
@@ -221,7 +221,7 @@ def get_defaults():
         "rack_mrc_crore":    ra["rack_mrc_crore"],
         "util_tariff":       ra["utility_tariff_rs_per_kwh"],
         "power_markup":      ra["power_markup_rs_per_kwh"],
-        "kw_per_rack":       ra.get("kw_per_rack", 4.5),
+        "kw_per_rack":       ra.get("kw_per_rack", 6.0),
     }
 
 

@@ -26,7 +26,7 @@ from assumptions.revenue_defaults import (
 )
 
 
-def market_agent(location, facility_type="retail_colo", total_racks=1000, kw_per_rack=4.5):
+def market_agent(location, facility_type="retail_colo", total_racks=1000, kw_per_rack=6.0):
 
     total_mw = round(total_racks * kw_per_rack / 1000, 1)
 

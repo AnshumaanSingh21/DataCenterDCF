@@ -242,9 +242,9 @@ FACILITY_TYPE_OVERRIDES = {
 
     "retail_colo": {
 
-        "kw_per_rack": 4.5,
+        "kw_per_rack": 6.0,
 
-        "power_per_rack_kw": 4.5,
+        "power_per_rack_kw": 6.0,
 
         "managed_services_penetration": 0.0,
     },

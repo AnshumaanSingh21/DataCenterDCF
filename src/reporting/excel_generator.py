@@ -241,7 +241,7 @@ def write_asmp(wb, P):
     der(r, "Tenant power tariff (Year 1)", "Rs/kWh", f"=ASMP!$C${r-2}+ASMP!$C${r-1}", FMT_CR); r += 1
     AR['pwr_esc']       = r; inp(r, "Power tariff escalation",      "% p.a.",      0.05,     FMT_P1); r += 1
     AR['pue']           = r; inp(r, "PUE",                          "–",           rev_a['pue'],  FMT_CR); r += 1
-    AR['kw_per_rack']   = r; inp(r, "IT load per rack",             "kW/rack",     4.5,      FMT_CR); r += 1
+    AR['kw_per_rack']   = r; inp(r, "IT load per rack",             "kW/rack",     rev_a.get('kw_per_rack', 6.0), FMT_CR); r += 1
     AR['dot_share']     = r; inp(r, "DoT revenue share",            "%",           0.0,      FMT_P2); r += 1
 
     # ── CAPEX ─────────────────────────────────────────────────────────────
