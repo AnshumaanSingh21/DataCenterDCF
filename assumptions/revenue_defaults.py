@@ -8,6 +8,7 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
     # =====================================================
 
     "lease_up_curve": [
+        0.00,   # Year 1 — construction, not operational
         0.10,
         0.16,
         0.24,
@@ -17,7 +18,6 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
         0.60,
         0.69,
         0.78,
-        0.87,
     ],
 
     "pue": 1.6,
