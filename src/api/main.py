@@ -182,6 +182,27 @@ def get_defaults():
     }
 
 
+@app.get("/api/market-values")
+def get_market_values(location: str = "Mumbai", facility_type: str = "retail_colo", kw_per_rack: float = 6.0):
+    """Return LLM-sourced market values for a given location and facility type."""
+    la = get_default_loan_assumptions()
+    ra = get_default_revenue_assumptions()
+
+    if USE_MARKET_INTELLIGENCE:
+        market = _get_market_overrides(location, facility_type, 1000, kw_per_rack)
+        ra.update(market.get("rev_overrides", {}))
+        la.update(market.get("loan_overrides", {}))
+
+    return {
+        "pue":           ra["pue"],
+        "interest_rate": la["interest_rate"],
+        "rack_mrc_crore": ra["rack_mrc_crore"],
+        "util_tariff":   ra["utility_tariff_rs_per_kwh"],
+        "power_markup":  ra["power_markup_rs_per_kwh"],
+        "kw_per_rack":   ra.get("kw_per_rack", kw_per_rack),
+    }
+
+
 @app.post("/api/run")
 def run_model(req: RunRequest):
     try:

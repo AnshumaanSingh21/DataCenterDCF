@@ -12,6 +12,13 @@ export async function getDefaults() {
   return res.json();
 }
 
+export async function getMarketValues(location, facilityType, kwPerRack = 6.0) {
+  const params = new URLSearchParams({ location, facility_type: facilityType, kw_per_rack: kwPerRack });
+  const res = await fetch(`${API_BASE}/api/market-values?${params}`);
+  if (!res.ok) throw new Error('Failed to fetch market values');
+  return res.json();
+}
+
 export async function runModel(assumptions) {
   let res;
   try {
