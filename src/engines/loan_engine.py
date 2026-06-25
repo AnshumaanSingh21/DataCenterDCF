@@ -87,17 +87,28 @@ def compute_loan(
 
         outstanding = loan_amount
 
-        annual_principal = loan_amount / tenure
+        # Amortize over the post-moratorium repayment period so the loan
+        # fully repays by maturity (draw_year + tenure) at the correct rate,
+        # rather than spreading over the full tenure and leaving a balloon.
+        repayment_period = max(tenure - moratorium, 1)
+
+        annual_principal = loan_amount / repayment_period
 
         repayment_start = draw_year + moratorium + 1
 
-        repayment_end = repayment_start + tenure
+        repayment_end = repayment_start + repayment_period
 
         for yr in range(draw_year, years):
 
             opening_balance[yr] = outstanding
 
-            interest_payment[yr] = outstanding * interest_rate
+            # Half-year (average-balance) interest in the draw year: the
+            # tranche is drawn progressively through its construction year,
+            # not on day one, so a full year of interest overstates it.
+            if yr == draw_year:
+                interest_payment[yr] = outstanding * interest_rate * 0.5
+            else:
+                interest_payment[yr] = outstanding * interest_rate
 
             if (
                 yr >= repayment_start
