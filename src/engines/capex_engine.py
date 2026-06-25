@@ -82,7 +82,7 @@ def compute_capex(
     # ----------------------------------
 
     location = user_inputs.get("location", "")
-    if location in LOCATION_LAND_COST:
+    if not assumptions.get("land_cost_per_sqft_rs") and location in LOCATION_LAND_COST:
         assumptions["land_cost_per_sqft_rs"] = LOCATION_LAND_COST[location]
 
     site_sizing = (
