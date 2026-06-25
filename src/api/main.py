@@ -33,6 +33,8 @@ from src.engines.tax_engine import compute_tax
 from src.engines.working_capital_engine import compute_working_capital
 from src.engines.cashflow_engine import compute_cashflow
 from src.reporting.excel_generator import generate
+from src.llm.prompts import _CITY_MRC_RANGE, _FACILITY_MRC_MULTIPLIER, _CITY_DISCOM
+from assumptions.capex_defaults import LOCATION_LAND_COST
 
 EXCEL_OUT = os.path.join(os.path.dirname(__file__), "..", "..", "outputs", "excel_models", "dcf_model.xlsx")
 
@@ -65,22 +67,75 @@ class RunRequest(BaseModel):
     kw_per_rack:       Optional[float] = Field(None, ge=1.0)
 
 
+# Location-label aliases (frontend label -> anchor-table key)
+_LOC_ALIAS       = {"Delhi": "Delhi NCR"}
+_FACILITY_PUE    = {"retail_colo": 1.6, "wholesale": 1.55, "ai_hpc": 1.4, "hyperscale": 1.55}
+_FACILITY_MARKUP = {"retail_colo": 1.5, "wholesale": 0.75, "ai_hpc": 1.5, "hyperscale": 0.75}
+
+
+def _band_mid(band: str, default: float = 8.5) -> float:
+    """Midpoint of a tariff band string like '8.5–9.5' (handles en/em dashes)."""
+    try:
+        parts = band.replace("–", "-").replace("—", "-").split("-")
+        return round((float(parts[0]) + float(parts[1])) / 2, 2)
+    except Exception:
+        return default
+
+
+def _heuristic_market_overrides(location: str, facility_type: str, kw_per_rack: float) -> dict:
+    """Location/facility-aware fallback built from the SAME anchor tables the
+    LLM prompt uses. Guarantees values vary by location/facility even when the
+    LLM is unavailable (quota exhausted, no API key, offline)."""
+    loc        = _LOC_ALIAS.get(location, location)
+    lo, hi     = _CITY_MRC_RANGE.get(loc, (30_000, 1_50_000))
+    mult       = _FACILITY_MRC_MULTIPLIER.get(facility_type, 1.0)
+    rack_crore = round((lo + hi) / 2 * mult / 1e7, 6)
+    tariff     = _band_mid(_CITY_DISCOM.get(loc, (None, None, None, "8.5-9.5"))[3])
+    markup     = _FACILITY_MARKUP.get(facility_type, 1.5)
+    pue        = _FACILITY_PUE.get(facility_type, 1.6)
+    land       = LOCATION_LAND_COST.get(loc, 5000)
+    interest   = 0.105
+    return {
+        "rev_overrides": {
+            "rack_mrc_crore":              rack_crore,
+            "rack_price_per_rack_crore":   rack_crore,
+            "utility_tariff_rs_per_kwh":   tariff,
+            "power_markup_rs_per_kwh":     markup,
+            "tenant_power_rate_rs_per_kwh": round(tariff + markup, 2),
+            "pue":                         pue,
+        },
+        "capex_overrides": {"land_cost_per_sqft_rs": land},
+        "loan_overrides":  {"interest_rate": interest, "market_interest_rate": interest},
+        "audit": [{
+            "llm_field": "_heuristic", "source": "heuristic",
+            "llm_reasoning": f"location/facility-aware fallback for {location}/{facility_type} "
+                             f"(LLM unavailable) derived from anchor ranges",
+        }],
+        "from_cache": False,
+    }
+
+
 def _get_market_overrides(location: str, facility_type: str, total_racks: int, kw_per_rack: float) -> dict:
     """
     Fetch validated LLM market overrides via market_agent (90-day cached).
     Returns {"rev_overrides": {...}, "capex_overrides": {...}, "loan_overrides": {...}}.
-    Falls back to empty dicts on any failure — defaults take over.
+    If the LLM yields nothing usable (failure or zero accepted fields), falls
+    back to a location/facility-aware heuristic so values still vary by city —
+    never to flat location-independent defaults.
     """
     try:
         result = market_agent(location, facility_type, total_racks=total_racks, kw_per_rack=kw_per_rack)
+        accepted = sum(1 for a in result.get("audit", []) if a.get("source") == "llm")
+        if accepted == 0:
+            print(f"[Market] {location}/{facility_type}: LLM empty -> heuristic fallback")
+            return _heuristic_market_overrides(location, facility_type, kw_per_rack)
         src = "cache" if result.get("from_cache") else "llm"
         age = f" age={result.get('cache_age_days')}d" if result.get("from_cache") else ""
-        accepted = sum(1 for a in result.get("audit", []) if a.get("source") == "llm")
         print(f"[Market] {location}/{facility_type}: {accepted} fields from {src}{age}")
         return result
     except Exception as e:
-        print(f"[Market] Failed for {location}/{facility_type}: {e}")
-        return {"rev_overrides": {}, "capex_overrides": {}, "loan_overrides": {}}
+        print(f"[Market] Failed for {location}/{facility_type}: {e} -> heuristic fallback")
+        return _heuristic_market_overrides(location, facility_type, kw_per_rack)
 
 
 # ── Response helpers ──────────────────────────────────────────────────────────
