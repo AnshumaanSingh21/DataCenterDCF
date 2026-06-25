@@ -307,16 +307,30 @@ def compute_opex(
 
     # -----------------------------
     # PROPERTY TAX
-    # Levied on full asset base
-    # (land + building + equipment),
-    # not land alone.
+    # BMC levies on land + building only.
+    # IT equipment is personal property, not real estate.
+    # Rate: 0.22% under Maharashtra IT/ITeS Policy 2023
+    # (residential rate concession for data centers).
     # -----------------------------
+
+    land_cost_crore = capex_output["site_sizing"]["land_cost_crore"]
+    civil_capex = capex_output["capex_components"]["civil_capex"]
+    cumulative_civil_capex = []
+    running_civil = 0.0
+    for c in civil_capex:
+        running_civil += c
+        cumulative_civil_capex.append(running_civil)
+
+    property_tax_base = [
+        land_cost_crore + cumulative_civil_capex[i]
+        for i in range(years)
+    ]
 
     property_tax = [
 
         0.0 if i < construction_years else
 
-        asset_value[i]
+        property_tax_base[i]
 
         * assumptions[
             "property_tax_pct_of_asset_value"

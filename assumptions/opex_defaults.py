@@ -86,7 +86,7 @@ def get_default_opex_assumptions():
         # PROPERTY TAX
         # =====================================================
 
-        "property_tax_pct_of_asset_value": 0.01,
+        "property_tax_pct_of_asset_value": 0.0022,
 
         # =====================================================
         # MARKETING
