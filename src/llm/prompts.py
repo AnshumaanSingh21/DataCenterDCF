@@ -151,10 +151,17 @@ Borrower Class  : {_BORROWER_CLASS}
 
 === METHODOLOGY ===
 For each assumption, in this exact order:
-1. STATE the anchor data point and source you are reasoning from
-2. SHOW the derivation or arithmetic
-3. GIVE a single point estimate (not a range)
-4. ASSIGN confidence using the matrix below — do not guess the tier
+1. ESTIMATE INDEPENDENTLY FIRST. State your own best estimate for THIS specific
+   location and facility type, drawn from your own knowledge of the Indian data
+   center market — name the operator, report, tariff order, or comparable deal you
+   are reasoning from. Do this BEFORE looking at the reference ranges.
+2. RECONCILE against the reference ranges below. They are plausibility GUARDRAILS,
+   NOT targets — do NOT simply take their midpoint or interpolate a city index.
+   If your independent estimate sits inside the range, keep your number. If it sits
+   outside, that is permitted: explicitly justify why your evidence overrides the
+   guardrail, and lower your confidence if the evidence is thin.
+3. GIVE a single reconciled point estimate (not a range).
+4. ASSIGN confidence using the matrix below — do not guess the tier.
 
 Confidence matrix:
 - "high"   : Explicit value from SERC tariff order, audited operator report, or \
@@ -169,16 +176,16 @@ Set value to null if confidence is low.
 If context or training data contains pricing for OTHER facility types, explicitly \
 exclude it and note this in reasoning.
 
-=== MARKET ANCHOR DATA ===
+=== REFERENCE RANGES (plausibility guardrails — NOT targets to interpolate) ===
+Use these only to sanity-check the independent estimates you formed in step 1.
+Prefer your own location/facility-specific knowledge; deviate from these ranges when
+your evidence supports it (and say so).
 
 --- RACK MRC (space-only monthly charge, excluding power) ---
-- JM Financial Data Centre 101 (March 2025): Mumbai Tier III retail colo space-only ₹50,000–₹75,000/rack/month
-- Cushman & Wakefield India DC Market 2024: All-in tenant cost (space + power) ₹90,000–₹1,10,000/rack/month in Mumbai
-- Power component at {kw_per_rack}kW: {kw_per_rack} × 730 hrs × tenant_power_rate ≈ ₹{power_component_low:,}–₹{power_component_high:,}/month
-- Derivation rule: space_only_MRC = all_in_tenant_cost − power_component
-- City index relative to Mumbai (Mumbai = 100): Bangalore 88, Delhi NCR 90, Hyderabad 78, Chennai 75, Pune 72
-- Apply city index to derive {location}-specific rate from Mumbai anchor
-- Valid range for {location}: ₹{mrc_range[0]:,} – ₹{mrc_range[1]:,}/rack/month
+- For reference: JM Financial DC 101 (Mar 2025) put Mumbai Tier III retail colo space-only at ₹50,000–₹75,000/rack/month; C&W India 2024 put all-in (space+power) at ₹90,000–₹1,10,000
+- Power component at {kw_per_rack}kW ≈ {kw_per_rack} × 730 hrs × tenant_power_rate ≈ ₹{power_component_low:,}–₹{power_component_high:,}/month (so space_only ≈ all_in − power)
+- Rough city index vs Mumbai=100 (reference only, do not mechanically apply): Bangalore 88, Delhi NCR 90, Hyderabad 78, Chennai 75, Pune 72
+- Plausibility guardrail for {location}: ₹{mrc_range[0]:,} – ₹{mrc_range[1]:,}/rack/month
 
 --- POWER TARIFF (utility grid HT commercial rate, annual blended) ---
 {power_tariff_block}

@@ -96,14 +96,21 @@ def _row(lst):
 
 # ── Pipeline runner ───────────────────────────────────────────────────────────
 
-def run_pipeline(req: RunRequest):
+# Last run's inputs + assumption dicts, captured so /api/download can
+# regenerate the Excel to match the dashboard without re-calling the LLM.
+_LAST_INPUTS = None
+
+
+def _build_inputs(req: RunRequest):
+    """Build the engine inputs and per-engine assumption dicts from a request,
+    applying LLM market overrides then explicit UI overrides. Returns
+    (ui, assumptions_by_engine)."""
     ui = {
         "total_racks":       req.total_racks,
         "location":          req.location,
         "facility_type":     req.facility_type,
         "start_year":        req.start_year,
         "projection_years":  req.projection_years,
-        "deployment_schedule": {0: 300, 3: 300, 6: 400},
     }
 
     rev_a  = get_default_revenue_assumptions()
@@ -139,14 +146,35 @@ def run_pipeline(req: RunRequest):
     wc_a   = get_default_working_capital_assumptions()
     val_a  = get_default_valuation_assumptions()
 
-    rev  = compute_revenue(ui, rev_a)
-    cap  = compute_capex(ui, cap_a)
-    opx  = compute_opex(rev, cap, opx_a)
-    dep  = compute_depreciation(cap, dep_a)
-    loan = compute_loan(cap, loan_a)
-    tax  = compute_tax(opx, dep, loan, tax_a)
-    wc   = compute_working_capital(rev, wc_a)
-    cf   = compute_cashflow(opx, cap, dep, loan, tax, wc, val_a)
+    return ui, {
+        "rev": rev_a, "cap": cap_a, "opx": opx_a, "dep": dep_a,
+        "loan": loan_a, "tax": tax_a, "wc": wc_a, "val": val_a,
+    }
+
+
+def run_pipeline(req: RunRequest):
+    global _LAST_INPUTS
+    ui, A = _build_inputs(req)
+
+    # Persist this run's inputs + assumptions so /api/download can rebuild
+    # the Excel to match the dashboard (the base ui has no deployment_schedule;
+    # the Excel derives it from CapEx itself, same single-source rule).
+    _LAST_INPUTS = {"ui": ui, **A}
+
+    # CapEx is the single source of truth for deployed capacity.
+    # Compute it first, then cap revenue occupancy by what was
+    # actually fitted out (you can't lease a rack that isn't built).
+    cap  = compute_capex(ui, A["cap"])
+    ui   = {**ui, "deployment_schedule": {
+        p["year"]: p["racks"] for p in cap["deployment_schedule"]
+    }}
+    rev  = compute_revenue(ui, A["rev"])
+    opx  = compute_opex(rev, cap, A["opx"])
+    dep  = compute_depreciation(cap, A["dep"])
+    loan = compute_loan(cap, A["loan"])
+    tax  = compute_tax(opx, dep, loan, A["tax"])
+    wc   = compute_working_capital(rev, A["wc"])
+    cf   = compute_cashflow(opx, cap, dep, loan, tax, wc, A["val"])
 
     return rev, cap, opx, dep, loan, tax, wc, cf
 
@@ -298,7 +326,9 @@ def download_excel():
     try:
         path = os.path.abspath(EXCEL_OUT)
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        generate(path)
+        # Rebuild the workbook to match the most recent run; falls back to
+        # module defaults if the model hasn't been run yet this session.
+        generate(path, override=_LAST_INPUTS)
     except Exception as exc:
         print(f"[Excel] generation failed: {exc}")
         print(traceback.format_exc())

@@ -27,19 +27,25 @@ user_inputs = {
     "facility_type":       "retail_colo",
     "projection_years":    10,
     "start_year":          2026,
-    "deployment_schedule": {0: 300, 3: 300, 6: 400},
 }
 
 # ----------------------------------
 # RUN ALL ENGINES
+# CapEx first — it owns the deployment schedule. Revenue occupancy
+# is then capped by what CapEx actually fitted out.
 # ----------------------------------
-
-revenue_output = compute_revenue(
-    user_inputs, get_default_revenue_assumptions()
-)
 
 capex_output = compute_capex(
     user_inputs, get_default_capex_assumptions()
+)
+
+user_inputs["deployment_schedule"] = {
+    p["year"]: p["racks"]
+    for p in capex_output["deployment_schedule"]
+}
+
+revenue_output = compute_revenue(
+    user_inputs, get_default_revenue_assumptions()
 )
 
 opex_output = compute_opex(

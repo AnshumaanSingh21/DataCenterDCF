@@ -47,6 +47,8 @@ def compute_cashflow(
     cumulative_capex = capex_output["financials"]["cumulative_capex"]
     land_cost     = capex_output["site_sizing"]["land_cost_crore"]
     civil_capex   = capex_output["capex_components"]["civil_capex"]
+    electrical_capex = capex_output["capex_components"]["electrical_capex"]
+    mechanical_capex = capex_output["capex_components"]["mechanical_capex"]
     deployment_schedule = capex_output.get("deployment_schedule", [])
 
     change_in_wc  = working_capital_output["financials"]["change_in_working_capital"]
@@ -90,24 +92,29 @@ def compute_cashflow(
 
     # ----------------------------------
     # MAINTENANCE CAPEX
-    # Phase-aware: 1.5% of MEP base (excl. civil + land)
-    # MEP base for each phase eligible only after 3-yr warranty
+    # Phase-aware: 1.5% of the maintainable M&E plant.
+    # Base is the actual electrical + mechanical fit-out — the gear
+    # that wears out and gets replaced. Civil (building), land,
+    # site, pre-op, network and IT are excluded: civil/land don't
+    # take 1.5% replacement capex, and network/IT are refreshed via
+    # their own (short) depreciation lives, not this line.
+    # Each fit-out phase becomes eligible only after its 3-yr OEM
+    # warranty, measured from commissioning.
     # ----------------------------------
 
-    # MEP capex per year = total - civil (land already in site_level_capex)
     mep_capex = [
-        max(capex[i] - civil_capex[i], 0)
+        electrical_capex[i] + mechanical_capex[i]
         for i in range(n)
     ]
 
-    # Cumulative MEP eligible at year i = sum of MEP from phases
-    # deployed at least `warranty_years` years before year i
+    # Cumulative M&E eligible at year i = sum of M&E from fit-out
+    # phases commissioned at least `warranty_years` years earlier
     maintenance_capex = []
     for i in range(n):
         eligible_mep = sum(
             mep_capex[j]
             for j in range(n)
-            if capex[j] > 0 and j <= i
+            if mep_capex[j] > 0 and j <= i
             and (i - max(j, construction_years)) >= warranty_years
         )
         maintenance_capex.append(eligible_mep * maint_rate)
@@ -284,8 +291,18 @@ def compute_cashflow(
         running_eq += e
         cumulative_equity.append(running_eq)
 
-    total_equity_invested = sum(equity_funding)
-    # Include terminal equity value in returns (MOIC is total-return-inclusive)
+    # MOIC must use a single consistent basis for both legs.
+    # The actual equity cash flow each year is the FCFE: negative
+    # FCFE is cash the sponsor must inject (planned equity PLUS any
+    # operating shortfall), positive FCFE is cash distributed.
+    # Using only planned equity_funding as the denominator while
+    # taking FCFE positives as the numerator mixes two bases and
+    # overstates MOIC. Compute both from fcfe_with_tv (terminal
+    # value already embedded in the final year) so MOIC is
+    # consistent with the equity IRR, which uses the same series.
+    total_equity_invested = sum(
+        -f for f in fcfe_with_tv if f < 0
+    )
     total_equity_returned = sum(
         f for f in fcfe_with_tv if f > 0
     )

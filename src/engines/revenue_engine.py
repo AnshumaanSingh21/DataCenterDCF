@@ -32,7 +32,15 @@ def compute_revenue(user_inputs, assumptions):
     total_racks = user_inputs["total_racks"]
     start_year = user_inputs.get("start_year", 2026)
 
-    lease_up = assumptions["lease_up_curve"][:years]
+    # Lease-up curve is defined for the base horizon. For a longer
+    # horizon, hold the terminal occupancy (a stabilized DC plateaus —
+    # it doesn't keep climbing). For a shorter one, slice. This keeps
+    # the base-horizon result identical while making it length-safe.
+    _curve = assumptions["lease_up_curve"]
+    if years <= len(_curve):
+        lease_up = _curve[:years]
+    else:
+        lease_up = _curve + [_curve[-1]] * (years - len(_curve))
 
     # ---------------------------------
     # LEASE UP

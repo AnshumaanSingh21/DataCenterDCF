@@ -30,10 +30,24 @@ from src.engines.cashflow_engine        import compute_cashflow
 USER_INPUTS = {
     "location": "Mumbai", "total_racks": 1000, "facility_type": "retail_colo",
     "projection_years": 10, "start_year": 2026,
-    "deployment_schedule": {0: 500, 3: 300, 6: 200},  # 50%/30%/20% of 1000 racks
+    # deployment_schedule is derived from CapEx (single source of truth) in _run_pipeline
 }
-N = 10
-YEARS = list(range(2026, 2036))
+_DEFAULT_USER_INPUTS = dict(USER_INPUTS)  # immutable snapshot for reset
+N = USER_INPUTS["projection_years"]
+YEARS = list(range(USER_INPUTS["start_year"], USER_INPUTS["start_year"] + N))
+
+# When the workbook is generated for a specific user run, generate() injects
+# the run's inputs + assumption dicts here so the Excel matches the dashboard
+# (location, racks, facility type, horizon, and all LLM/UI-overridden values).
+# When None, the generator falls back to the module defaults above.
+_OVERRIDE = None
+
+def _A(key, default_fn):
+    """Return the overridden assumption dict for `key` if a run was injected,
+    else the engine default."""
+    if _OVERRIDE and _OVERRIDE.get(key) is not None:
+        return _OVERRIDE[key]
+    return default_fn()
 COL_LBL = 1; COL_UNIT = 2; COL_YR0 = 3
 DEPLOY_PY   = [0, 3, 6]
 DEPLOY_XCOL = ['C', 'F', 'I']
@@ -156,14 +170,19 @@ PNL_R  = {}; CFS_R  = {}; VAL_R  = {}
 
 # ─── pipeline run ─────────────────────────────────────────────────────────────
 def _run_pipeline():
-    rev = compute_revenue(USER_INPUTS, get_default_revenue_assumptions())
-    cap = compute_capex(USER_INPUTS, get_default_capex_assumptions())
-    opx = compute_opex(rev, cap, get_default_opex_assumptions())
-    dep = compute_depreciation(cap, get_default_depreciation_assumptions())
-    loan = compute_loan(cap, get_default_loan_assumptions())
-    tax = compute_tax(opx, dep, loan, get_default_tax_assumptions())
-    wc  = compute_working_capital(rev, get_default_working_capital_assumptions())
-    cf  = compute_cashflow(opx, cap, dep, loan, tax, wc, get_default_valuation_assumptions())
+    # CapEx first — it owns the deployment schedule; revenue occupancy
+    # is capped by what CapEx actually fitted out (single source of truth).
+    cap = compute_capex(USER_INPUTS, _A("cap", get_default_capex_assumptions))
+    ui  = {**USER_INPUTS, "deployment_schedule": {
+        p["year"]: p["racks"] for p in cap["deployment_schedule"]
+    }}
+    rev = compute_revenue(ui, _A("rev", get_default_revenue_assumptions))
+    opx = compute_opex(rev, cap, _A("opx", get_default_opex_assumptions))
+    dep = compute_depreciation(cap, _A("dep", get_default_depreciation_assumptions))
+    loan = compute_loan(cap, _A("loan", get_default_loan_assumptions))
+    tax = compute_tax(opx, dep, loan, _A("tax", get_default_tax_assumptions))
+    wc  = compute_working_capital(rev, _A("wc", get_default_working_capital_assumptions))
+    cf  = compute_cashflow(opx, cap, dep, loan, tax, wc, _A("val", get_default_valuation_assumptions))
     return dict(rev=rev, cap=cap, opx=opx, dep=dep, loan=loan, tax=tax, wc=wc, cf=cf)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -176,15 +195,15 @@ def write_asmp(wb, P):
     ws.freeze_panes = "C5"
 
     cc = P['cap']['capex_components']
-    rev_a = get_default_revenue_assumptions()
-    rev_a.update(FACILITY_TYPE_OVERRIDES.get('retail_colo', {}))
-    loan_a = get_default_loan_assumptions()
-    cap_a  = get_default_capex_assumptions()
-    opx_a  = get_default_opex_assumptions()
-    dep_a  = get_default_depreciation_assumptions()
-    tax_a  = get_default_tax_assumptions()
-    wc_a   = get_default_working_capital_assumptions()
-    val_a  = get_default_valuation_assumptions()
+    rev_a = dict(_A("rev", get_default_revenue_assumptions))
+    rev_a.update(FACILITY_TYPE_OVERRIDES.get(USER_INPUTS.get("facility_type", "retail_colo"), {}))
+    loan_a = _A("loan", get_default_loan_assumptions)
+    cap_a  = _A("cap", get_default_capex_assumptions)
+    opx_a  = _A("opx", get_default_opex_assumptions)
+    dep_a  = _A("dep", get_default_depreciation_assumptions)
+    tax_a  = _A("tax", get_default_tax_assumptions)
+    wc_a   = _A("wc", get_default_working_capital_assumptions)
+    val_a  = _A("val", get_default_valuation_assumptions)
 
     lease_up   = rev_a['lease_up_curve']
 
@@ -269,7 +288,7 @@ def write_asmp(wb, P):
     AR['net_pr']     = r; inp(r, "Network cost per rack",        "Cr/rack",  net_per_rack,  FMT_CR); r += 1
     AR['preop_pct']  = r; inp(r, "Pre-operational (% hard cost)","% hard",   0.15,          FMT_P2); r += 1
     AR['software_c'] = r; inp(r, "Software CapEx (Phase 1 only)","Cr",       10.0,          FMT_CR); r += 1
-    AR['land_c']       = r; inp(r, "Land cost (Phase 1 only)",              "Cr", 41.666667,                                  FMT_CR); r += 1
+    AR['land_c']       = r; inp(r, "Land cost (Phase 1 only)",              "Cr", P['cap']['site_sizing']['land_cost_crore'], FMT_CR); r += 1
     AR['siteprep_c']   = r; inp(r, "Site prep (consult + approvals, Ph1)", "Cr", 15.0,                                       FMT_CR); r += 1
     AR['misc_infra_c'] = r; inp(r, "Misc infrastructure (HT line, facade, commissioning, Ph1)", "Cr", cap_a.get('misc_infrastructure_cost_crore', 0.0), FMT_CR); r += 1
 
@@ -310,7 +329,7 @@ def write_asmp(wb, P):
     AR['debt_pct']   = r; inp(r, "Debt / Total CapEx",           "%",        loan_a['debt_pct'], FMT_P2); r += 1
     AR['eq_pct']     = r
     der(r, "Equity / Total CapEx", "%", f"=1-ASMP!$C${r-1}", FMT_P2); r += 1
-    AR['int_rate']   = r; inp(r, "Interest rate",                "% p.a.",   0.10, FMT_P2); r += 1
+    AR['int_rate']   = r; inp(r, "Interest rate",                "% p.a.",   loan_a['interest_rate'], FMT_P2); r += 1
     AR['morat']      = r; inp(r, "Moratorium",                   "years",    loan_a['moratorium_years'], FMT_INT); r += 1
     AR['tenure']     = r; inp(r, "Loan tenure",                  "years",    10,   FMT_INT); r += 1
 
@@ -326,7 +345,6 @@ def write_asmp(wb, P):
     r += 1; _hdr(ws, r, "VALUATION"); r += 1
     AR['cost_eq']    = r; inp(r, "Cost of equity",               "% p.a.",   0.18, FMT_P2); r += 1
     AR['ev_mult']    = r; inp(r, "Terminal EV/EBITDA multiple",  "x",        12.0, FMT_MX); r += 1
-    AR['dscr_cov']   = r; inp(r, "DSCR covenant",                "x",        1.25, FMT_MX); r += 1
 
     _col_widths(ws)
     ws.row_dimensions[3].height = 18
@@ -1288,15 +1306,6 @@ def write_cfs(wb):
           FMT_MX, True)
     r += 1
 
-    # Covenant check
-    _lbl(ws, r, "DSCR vs covenant", "x ≥ 1.25x")
-    for j in range(N):
-        ds = CFS_R['debt_svc']
-        f(r, j, f"=IF(CFS!{cl(j)}{ds}>0,"
-                f"IF(CFS!{cl(j)}{CFS_R['dscr']}>={_asmp('dscr_cov')},\"OK\",\"BREACH\"),\"–\")",
-          "@")
-    r += 1
-
     _col_widths(ws)
     return ws
 
@@ -1589,7 +1598,19 @@ def _predeclare_rows():
     WC_R.update({'nwc': 7, 'delta': 8})
 
 
-def generate(out_path: str = "outputs/excel_models/dcf_model.xlsx"):
+def generate(out_path: str = "outputs/excel_models/dcf_model.xlsx", override: dict = None):
+    """Build the workbook. If `override` is provided (from an API run), the
+    workbook reflects that run's inputs and assumptions; otherwise it uses
+    the module defaults. `override` keys: ui, rev, cap, opx, dep, loan, tax,
+    wc, val."""
+    global USER_INPUTS, N, YEARS, _OVERRIDE
+    _OVERRIDE = override
+    # Deterministically set module state every call so a prior run's params
+    # never leak into a later default generation.
+    USER_INPUTS = override["ui"] if (override and override.get("ui")) else dict(_DEFAULT_USER_INPUTS)
+    N = USER_INPUTS["projection_years"]
+    YEARS = list(range(USER_INPUTS["start_year"], USER_INPUTS["start_year"] + N))
+
     print("Running pipeline…")
     P = _run_pipeline()
 

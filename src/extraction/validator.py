@@ -265,7 +265,69 @@ def validate_market_intelligence(
             "rejection_reason": None,
         })
 
+    # 5. Cross-field consistency checks
+    # Per-field bounds can't catch values that are individually plausible but
+    # mutually contradictory. These checks flag internal incoherence so a shaky
+    # extraction is visible rather than silently trusted.
+    flags = _cross_field_consistency(accepted_llm, ctx, bounds)
+    audit.append({
+        "llm_field":        "consistency_check",
+        "source":           "validator",
+        "llm_value":        {"flags": flags, "passed": len(flags) == 0},
+        "llm_confidence":   None,
+        "llm_reasoning":    "; ".join(flags) if flags else "all cross-field checks passed",
+        "engine":           None,
+        "model_key":        None,
+        "model_value":      None,
+        "rejection_reason": None,
+    })
+
     return rev, capex, loan, audit
+
+
+def _cross_field_consistency(accepted_llm, ctx, bounds):
+    """Return a list of human-readable flags where accepted LLM values are
+    individually in-bounds but mutually inconsistent. Empty list = coherent."""
+    flags = []
+    kw     = ctx.get("kw_per_rack", 6.0)
+    mrc    = accepted_llm.get("rack_mrc_rs_per_month")
+    tariff = accepted_llm.get("utility_tariff_rs_per_kwh")
+    markup = accepted_llm.get("tenant_power_markup_rs_per_kwh")
+    pue    = accepted_llm.get("pue")
+    mech   = accepted_llm.get("mechanical_capex_cr_per_mw")
+
+    # (a) Power should be a sane share of the all-in tenant bill.
+    if mrc and tariff is not None and markup is not None:
+        power_component = kw * 730 * (tariff + markup)   # Rs/month
+        all_in = mrc + power_component
+        if all_in > 0:
+            share = power_component / all_in
+            if not (0.30 <= share <= 0.75):
+                flags.append(
+                    f"power is {share:.0%} of all-in tenant bill (expected 30-75%) — "
+                    f"rack MRC ({mrc:,.0f}) and power pricing are likely inconsistent"
+                )
+
+    # (b) Markup should be a sane fraction of the utility tariff.
+    if tariff and markup is not None and tariff > 0:
+        ratio = markup / tariff
+        if not (0.03 <= ratio <= 0.50):
+            flags.append(
+                f"power markup is {ratio:.0%} of the utility tariff (expected 3-50%)"
+            )
+
+    # (c) A low (efficient) PUE implies more cooling spend, not less.
+    if pue is not None and mech is not None:
+        mlo, mhi = bounds.get("mechanical_capex_cr_per_mw", (2.5, 4.0))
+        if mhi > mlo:
+            mech_pos = (mech - mlo) / (mhi - mlo)   # 0 = cheap, 1 = expensive
+            if pue < 1.45 and mech_pos < 0.40:
+                flags.append(
+                    f"PUE {pue} implies advanced/efficient cooling but mechanical "
+                    f"capex {mech} Cr/MW sits at the low end — directionally inconsistent"
+                )
+
+    return flags
 
 
 # ---------------------------------------------------------------------------

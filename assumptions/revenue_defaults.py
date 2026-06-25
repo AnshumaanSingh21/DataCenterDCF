@@ -9,15 +9,15 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
 
     "lease_up_curve": [
         0.00,   # Year 1  — construction, not operational
-        0.10,   # Year 2  (+100 racks — anchor tenants, pre-contracted)
-        0.16,   # Year 3  (+60 racks — organic ramp begins)
-        0.23,   # Year 4  (+70 racks, +10 vs prior year)
-        0.31,   # Year 5  (+80 racks, +10)
-        0.40,   # Year 6  (+90 racks, +10)
-        0.50,   # Year 7  (+100 racks, +10)
-        0.61,   # Year 8  (+110 racks, +10)
-        0.73,   # Year 9  (+120 racks — plateau begins)
-        0.85,   # Year 10 (+120 racks, steady) — 85% occupancy
+        0.15,   # Year 2  (+150 racks — anchor tenants, pre-contracted)
+        0.21,   # Year 3  (+60 racks — organic ramp begins)
+        0.28,   # Year 4  (+70 racks, +10 vs prior year)
+        0.36,   # Year 5  (+80 racks, +10)
+        0.45,   # Year 6  (+90 racks, +10)
+        0.55,   # Year 7  (+100 racks, +10)
+        0.65,   # Year 8  (+100 racks — plateau begins, steady)
+        0.75,   # Year 9  (+100 racks, steady)
+        0.85,   # Year 10 (+100 racks, steady) — 85% occupancy
     ],
 
     "pue": 1.6,

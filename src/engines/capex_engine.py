@@ -171,16 +171,16 @@ def compute_capex(
     # CAPEX COMPONENTS
     # ----------------------------------
 
-    civil_capex = [
-
-        racks
-
-        * assumptions[
-            "civil_cost_per_rack"
-        ]
-
-        for racks in racks_deployed
-    ]
+    # SHELL: the building (civil) is poured once, sized for full
+    # capacity, and built 100% in year 0 — you don't construct a
+    # building in rack-sized increments. Only the fit-out (MEP/IT
+    # below) tracks demand. This keeps the physical plant realistic
+    # while deferring the demand-driven spend.
+    civil_capex = [0.0] * years
+    civil_capex[0] = (
+        _total_racks
+        * assumptions["civil_cost_per_rack"]
+    )
 
     electrical_capex = [
 

@@ -49,13 +49,17 @@ def get_default_capex_assumptions():
 
         # =====================================================
         # DEPLOYMENT PLAN
+        # Fit-out (electrical/mechanical/network/IT) deploys in
+        # phases to stay ~20% ahead of the lease-up curve.
+        # Civil/shell is built 100% in year 1 (see capex engine),
+        # so these % apply only to the demand-driven fit-out.
         # =====================================================
 
-        "phase_1_pct": 0.50,
+        "phase_1_pct": 0.40,
 
         "phase_2_pct": 0.30,
 
-        "phase_3_pct": 0.20,
+        "phase_3_pct": 0.30,
 
         "phase_1_year": 0,
 
