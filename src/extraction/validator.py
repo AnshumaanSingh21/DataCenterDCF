@@ -3,6 +3,7 @@ from copy import deepcopy
 
 from src.llm.prompts import (
     _CITY_MRC_RANGE,
+    _FACILITY_MRC_MULTIPLIER,
     _CITY_CONSTRUCTION_COST,
     _ELECTRICAL_CAPEX_PER_MW,
     _MECHANICAL_CAPEX_PER_MW,
@@ -99,7 +100,9 @@ FIELD_MAP = {
 def _build_bounds(location, facility_type, effective_sqft_per_rack, kw_per_rack):
     bounds = dict(_GLOBAL_BOUNDS)
 
-    mrc_range = _CITY_MRC_RANGE.get(location, (30_000, 1_50_000))
+    _base_mrc = _CITY_MRC_RANGE.get(location, (30_000, 1_50_000))
+    _mrc_mult = _FACILITY_MRC_MULTIPLIER.get(facility_type, 1.0)
+    mrc_range = (round(_base_mrc[0] * _mrc_mult), round(_base_mrc[1] * _mrc_mult))
     bounds["rack_mrc_rs_per_month"] = mrc_range
 
     constr_range = _CITY_CONSTRUCTION_COST.get(location, (4_000, 8_000))

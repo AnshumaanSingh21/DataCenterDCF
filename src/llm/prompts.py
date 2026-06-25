@@ -24,6 +24,14 @@ _CITY_MRC_RANGE = {
     "Pune":      (32_000, 65_000),
 }
 
+# Facility-type multipliers applied on top of city base range
+_FACILITY_MRC_MULTIPLIER = {
+    "retail_colo": 1.0,
+    "wholesale":   0.70,
+    "ai_hpc":      2.50,
+    "hyperscale":  0.80,
+}
+
 # Borrower class context based on project description
 _BORROWER_CLASS = "Greenfield, first project, no operational track record"
 
@@ -87,7 +95,9 @@ def build_market_intelligence_prompt(
             "- Return medium confidence if location does not match any of the above."
         )
 
-    mrc_range = _CITY_MRC_RANGE.get(location, (30_000, 1_50_000))
+    _base_mrc = _CITY_MRC_RANGE.get(location, (30_000, 1_50_000))
+    _mrc_mult = _FACILITY_MRC_MULTIPLIER.get(facility_type, 1.0)
+    mrc_range = (round(_base_mrc[0] * _mrc_mult), round(_base_mrc[1] * _mrc_mult))
     power_component_low  = round(kw_per_rack * 730 * 9.0)
     power_component_high = round(kw_per_rack * 730 * 11.0)
 
