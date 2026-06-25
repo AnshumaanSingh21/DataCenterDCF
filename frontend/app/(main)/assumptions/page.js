@@ -71,9 +71,9 @@ export default function AssumptionsPage() {
       .then(d => setForm(d))
       .catch(() => setForm({
         total_racks: 1000, location: 'Mumbai', facility_type: 'retail_colo',
-        start_year: 2026, projection_years: 10, pue: 1.6,
-        debt_pct: 0.50, moratorium_years: 2, interest_rate: 0.10,
-        rack_mrc_crore: 0.005, util_tariff: 8.0, power_markup: 1.5, kw_per_rack: 4.5,
+        start_year: 2026, projection_years: 10, pue: 1.63,
+        debt_pct: 0.50, moratorium_years: 3, interest_rate: 0.105,
+        rack_mrc_crore: 0.00625, util_tariff: 9.0, power_markup: 1.5, kw_per_rack: 6.0,
       }));
   }, []);
 

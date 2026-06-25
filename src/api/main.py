@@ -157,6 +157,14 @@ def run_pipeline(req: RunRequest):
 def get_defaults():
     la = get_default_loan_assumptions()
     ra = get_default_revenue_assumptions()
+
+    # Enrich with LLM market values for default location (cached 90 days)
+    kw = ra.get("kw_per_rack", 6.0)
+    if USE_MARKET_INTELLIGENCE:
+        market = _get_market_overrides("Mumbai", "retail_colo", 1000, kw)
+        ra.update(market.get("rev_overrides", {}))
+        la.update(market.get("loan_overrides", {}))
+
     return {
         "total_racks":       1000,
         "location":          "Mumbai",
