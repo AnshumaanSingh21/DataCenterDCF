@@ -92,7 +92,7 @@ def market_agent(
     # 1. Cache lookup
     # ------------------------------------------------------------------
     if not force_refresh:
-        cached = cache_get(location, facility_type)
+        cached = cache_get(location, facility_type, kw_per_rack)
         if cached is not None:
             rev_ov   = cached["overrides"].get("revenue", {})
             capex_ov = cached["overrides"].get("capex",   {})
@@ -144,6 +144,7 @@ def market_agent(
     cache_set(
         location      = location,
         facility_type = facility_type,
+        kw_per_rack   = kw_per_rack,
         llm_raw       = llm_raw,
         audit         = audit,
         overrides     = overrides,

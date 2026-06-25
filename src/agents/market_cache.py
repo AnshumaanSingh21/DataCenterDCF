@@ -27,8 +27,8 @@ CACHE_TTL_DAYS = 90
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _cache_key(location: str, facility_type: str) -> str:
-    return f"{location}|{facility_type}"
+def _cache_key(location: str, facility_type: str, kw_per_rack: float) -> str:
+    return f"{location}|{facility_type}|{round(kw_per_rack, 1)}kw"
 
 
 def _load() -> dict:
@@ -69,7 +69,7 @@ def _is_fresh(entry: dict, ttl_days: int = CACHE_TTL_DAYS) -> bool:
 # Public API
 # ---------------------------------------------------------------------------
 
-def get(location: str, facility_type: str) -> dict | None:
+def get(location: str, facility_type: str, kw_per_rack: float = 6.0) -> dict | None:
     """
     Return cached entry if it exists and is within TTL.
     Returns None if missing or stale.
@@ -86,7 +86,7 @@ def get(location: str, facility_type: str) -> dict | None:
       }
     """
     cache = _load()
-    key   = _cache_key(location, facility_type)
+    key   = _cache_key(location, facility_type, kw_per_rack)
     entry = cache.get(key)
 
     if entry is None:
@@ -109,6 +109,7 @@ def get(location: str, facility_type: str) -> dict | None:
 def set(
     location: str,
     facility_type: str,
+    kw_per_rack: float,
     llm_raw: dict,
     audit: list,
     overrides: dict,
@@ -120,12 +121,13 @@ def set(
     of assumption key→value pairs that passed validation.
     """
     cache = _load()
-    key   = _cache_key(location, facility_type)
+    key   = _cache_key(location, facility_type, kw_per_rack)
 
     cache[key] = {
         "fetched_at":    _now_iso(),
         "location":      location,
         "facility_type": facility_type,
+        "kw_per_rack":   round(kw_per_rack, 1),
         "llm_raw":       llm_raw,
         "audit":         audit,
         "overrides":     overrides,
@@ -134,13 +136,13 @@ def set(
     _save(cache)
 
 
-def invalidate(location: str, facility_type: str) -> bool:
+def invalidate(location: str, facility_type: str, kw_per_rack: float = 6.0) -> bool:
     """
     Force-expire a specific cache entry.
     Returns True if an entry was removed, False if it did not exist.
     """
     cache = _load()
-    key   = _cache_key(location, facility_type)
+    key   = _cache_key(location, facility_type, kw_per_rack)
 
     if key not in cache:
         return False
