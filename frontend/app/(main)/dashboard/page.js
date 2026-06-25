@@ -29,36 +29,6 @@ function EmptyState() {
   );
 }
 
-function DSCRStrip({ years, dscr }) {
-  const colorFor = (v) => {
-    if (!v || v === 0) return { bg: '#F4F6F9', text: '#9CA3AF' };
-    if (v < 1.0)      return { bg: '#FEF2F2', text: '#DC2626' };
-    if (v < 1.25)     return { bg: '#FFFBEB', text: '#D4A017' };
-    return             { bg: '#F0FDF4', text: '#00A36C' };
-  };
-  return (
-    <Card padding="p-5">
-      <div className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF] mb-3">DSCR — Year by Year</div>
-      <div className="flex gap-2 flex-wrap">
-        {years.map((y, i) => {
-          const v = dscr?.[i];
-          const { bg, text } = colorFor(v);
-          return (
-            <div key={y} className="flex flex-col items-center gap-1 min-w-[52px]">
-              <div
-                className="rounded-lg px-2 py-1.5 text-xs font-bold w-full text-center"
-                style={{ backgroundColor: bg, color: text, fontFamily: 'var(--font-jetbrains), monospace' }}
-              >
-                {v !== null && v !== undefined ? v.toFixed(2) + 'x' : '—'}
-              </div>
-              <span className="text-[10px] text-[#9CA3AF]">FY{String(y).slice(2)}</span>
-            </div>
-          );
-        })}
-      </div>
-    </Card>
-  );
-}
 
 export default function DashboardPage() {
   const { result } = useModel();
@@ -66,7 +36,7 @@ export default function DashboardPage() {
 
   if (!result) return <EmptyState />;
 
-  const { kpis, years, cashflow } = result;
+  const { kpis } = result;
 
   const fmtCr = (val, dec = 1) => {
     if (val === null || val === undefined) return '—';
@@ -110,8 +80,6 @@ export default function DashboardPage() {
           <MetricCard key={m.label} {...m} />
         ))}
       </div>
-
-      <DSCRStrip years={years} dscr={cashflow?.dscr} />
 
       {showUsd && (
         <p className="text-xs text-[#9CA3AF]">

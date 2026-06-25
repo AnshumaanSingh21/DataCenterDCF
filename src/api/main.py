@@ -9,10 +9,10 @@ from pydantic import BaseModel, Field
 from typing import Optional
 import traceback
 
-# ── RAG feature flag ──────────────────────────────────────────────────────────
-# Set True to enrich defaults with market-extracted values from the knowledge base.
+# ── Market intelligence feature flag ─────────────────────────────────────────
+# Set True to enrich defaults with LLM-sourced market values (cached 90 days).
 # Set False to use validated baseline defaults only.
-USE_RAG = False
+USE_MARKET_INTELLIGENCE = True
 
 from assumptions.revenue_defaults import get_default_revenue_assumptions
 from src.agents.market_agent import market_agent
@@ -65,35 +65,22 @@ class RunRequest(BaseModel):
     kw_per_rack:       Optional[float] = Field(None, ge=1.0)
 
 
-# ── RAG assumption cache (per server session, keyed by location+facility_type) ─
-# Avoids calling Gemini on every "Run Model" click for the same market.
-_rag_cache: dict = {}
-
-CONFIDENCE_THRESHOLD = 0.5
-
-def _get_rag_assumptions(location: str, facility_type: str, total_racks: int, kw_per_rack: float) -> dict:
+def _get_market_overrides(location: str, facility_type: str, total_racks: int, kw_per_rack: float) -> dict:
     """
-    Run market_agent once per market per server session.
-    Returns {assumption_name: value} for confident extractions only.
-    Falls back to empty dict on any failure — defaults take over.
+    Fetch validated LLM market overrides via market_agent (90-day cached).
+    Returns {"rev_overrides": {...}, "capex_overrides": {...}, "loan_overrides": {...}}.
+    Falls back to empty dicts on any failure — defaults take over.
     """
-    key = (location, facility_type, total_racks, kw_per_rack)
-    if key in _rag_cache:
-        return _rag_cache[key]
     try:
-        results = market_agent(location, facility_type, total_racks=total_racks, kw_per_rack=kw_per_rack)
-        out = {
-            name: entry["value"]
-            for name, entry in results.items()
-            if entry.get("value") is not None
-            and entry.get("confidence", 0) >= CONFIDENCE_THRESHOLD
-        }
-        print(f"[RAG] Extracted {len(out)} assumptions for {location}/{facility_type} ({total_racks} racks): {out}")
+        result = market_agent(location, facility_type, total_racks=total_racks, kw_per_rack=kw_per_rack)
+        src = "cache" if result.get("from_cache") else "llm"
+        age = f" age={result.get('cache_age_days')}d" if result.get("from_cache") else ""
+        accepted = sum(1 for a in result.get("audit", []) if a.get("source") == "llm")
+        print(f"[Market] {location}/{facility_type}: {accepted} fields from {src}{age}")
+        return result
     except Exception as e:
-        print(f"[RAG] Failed for {location}/{facility_type}: {e}")
-        out = {}
-    _rag_cache[key] = out
-    return out
+        print(f"[Market] Failed for {location}/{facility_type}: {e}")
+        return {"rev_overrides": {}, "capex_overrides": {}, "loan_overrides": {}}
 
 
 # ── Response helpers ──────────────────────────────────────────────────────────
@@ -123,53 +110,15 @@ def run_pipeline(req: RunRequest):
     loan_a = get_default_loan_assumptions()
     cap_a  = get_default_capex_assumptions()
 
-    # ── RAG: override defaults with market-extracted values (confidence ≥ 0.5) ─
-    # Guardrail: cap each override at ±30% of the baseline default.
-    # Prevents unit errors or outlier data points from distorting the model.
-    RAG_MAX_DELTA = 0.20
-
-    def _guarded(rag_val, default_val):
-        if default_val == 0:
-            return rag_val
-        lo = default_val * (1 - RAG_MAX_DELTA)
-        hi = default_val * (1 + RAG_MAX_DELTA)
-        clamped = max(lo, min(hi, rag_val))
-        if clamped != rag_val:
-            print(f"[RAG] Clamped {rag_val:.6f} -> {clamped:.6f} (+-20% of default {default_val:.6f})")
-        return clamped
-
-    _kw = req.kw_per_rack if req.kw_per_rack is not None else rev_a.get("kw_per_rack", 4.5)
-    if USE_RAG:
-        rag = _get_rag_assumptions(req.location, req.facility_type, req.total_racks, _kw)
-        _rev_map = {
-            "rack_price_per_rack_crore":    ("rack_price_per_rack_crore", "rack_mrc_crore"),
-            "utility_tariff_rs_per_kwh":    ("utility_tariff_rs_per_kwh",),
-            "power_markup_rs_per_kwh":      ("power_markup_rs_per_kwh",),
-            "otc_price_per_new_rack_crore": ("otc_price_per_new_rack_crore", "otc_fee_crore"),
-            "rack_price_escalation":        ("rack_price_escalation", "rack_mrc_escalation"),
-            "power_tariff_escalation":      ("power_tariff_escalation",),
-        }
-        for rag_key, rev_keys in _rev_map.items():
-            if rag_key in rag:
-                for k in rev_keys:
-                    rev_a[k] = _guarded(rag[rag_key], rev_a[k])
-
-        # CapEx overrides: schema is Cr/MW, engine uses Cr/rack
-        # convert: cr_per_rack = cr_per_mw * kw_per_rack / 1000
-        _mw_to_rack = _kw / 1000
-        _cap_map = {
-            "civil_capex_cr_per_mw":       "civil_cost_per_rack",
-            "electrical_capex_cr_per_mw":  "electrical_cost_per_rack",
-            "mechanical_capex_cr_per_mw":  "mechanical_cost_per_rack",
-            "it_hardware_cr_per_rack":     "it_hardware_cost_per_rack",
-            "network_capex_cr_per_rack":   "network_cost_per_rack",
-        }
-        for rag_key, cap_key in _cap_map.items():
-            if rag_key in rag and cap_key in cap_a:
-                val = rag[rag_key]
-                if rag_key.endswith("_per_mw"):
-                    val = val * _mw_to_rack
-                cap_a[cap_key] = _guarded(val, cap_a[cap_key])
+    # ── Market intelligence: override defaults with validated LLM values ─────────
+    # Order of precedence: UI inputs > LLM market values > defaults
+    # Unit conversions and bounds validation already done inside market_agent/validator.
+    _kw = req.kw_per_rack if req.kw_per_rack is not None else rev_a.get("kw_per_rack", 6.0)
+    if USE_MARKET_INTELLIGENCE:
+        market = _get_market_overrides(req.location, req.facility_type, req.total_racks, _kw)
+        rev_a.update(market.get("rev_overrides",   {}))
+        cap_a.update(market.get("capex_overrides", {}))
+        loan_a.update(market.get("loan_overrides", {}))
 
     # ── UI overrides: only apply fields the user explicitly set (not None) ──────
     rev_a["pue"] = req.pue
@@ -208,6 +157,14 @@ def run_pipeline(req: RunRequest):
 def get_defaults():
     la = get_default_loan_assumptions()
     ra = get_default_revenue_assumptions()
+
+    # Enrich with LLM market values for default location (cached 90 days)
+    kw = ra.get("kw_per_rack", 6.0)
+    if USE_MARKET_INTELLIGENCE:
+        market = _get_market_overrides("Mumbai", "retail_colo", 1000, kw)
+        ra.update(market.get("rev_overrides", {}))
+        la.update(market.get("loan_overrides", {}))
+
     return {
         "total_racks":       1000,
         "location":          "Mumbai",
@@ -221,7 +178,28 @@ def get_defaults():
         "rack_mrc_crore":    ra["rack_mrc_crore"],
         "util_tariff":       ra["utility_tariff_rs_per_kwh"],
         "power_markup":      ra["power_markup_rs_per_kwh"],
-        "kw_per_rack":       ra.get("kw_per_rack", 4.5),
+        "kw_per_rack":       ra.get("kw_per_rack", 6.0),
+    }
+
+
+@app.get("/api/market-values")
+def get_market_values(location: str = "Mumbai", facility_type: str = "retail_colo", kw_per_rack: float = 6.0):
+    """Return LLM-sourced market values for a given location and facility type."""
+    la = get_default_loan_assumptions()
+    ra = get_default_revenue_assumptions()
+
+    if USE_MARKET_INTELLIGENCE:
+        market = _get_market_overrides(location, facility_type, 1000, kw_per_rack)
+        ra.update(market.get("rev_overrides", {}))
+        la.update(market.get("loan_overrides", {}))
+
+    return {
+        "pue":           ra["pue"],
+        "interest_rate": la["interest_rate"],
+        "rack_mrc_crore": ra["rack_mrc_crore"],
+        "util_tariff":   ra["utility_tariff_rs_per_kwh"],
+        "power_markup":  ra["power_markup_rs_per_kwh"],
+        "kw_per_rack":   ra.get("kw_per_rack", kw_per_rack),
     }
 
 

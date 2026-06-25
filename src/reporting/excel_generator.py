@@ -30,7 +30,7 @@ from src.engines.cashflow_engine        import compute_cashflow
 USER_INPUTS = {
     "location": "Mumbai", "total_racks": 1000, "facility_type": "retail_colo",
     "projection_years": 10, "start_year": 2026,
-    "deployment_schedule": {0: 300, 3: 300, 6: 400},
+    "deployment_schedule": {0: 500, 3: 300, 6: 200},  # 50%/30%/20% of 1000 racks
 }
 N = 10
 YEARS = list(range(2026, 2036))
@@ -186,8 +186,6 @@ def write_asmp(wb, P):
     wc_a   = get_default_working_capital_assumptions()
     val_a  = get_default_valuation_assumptions()
 
-    # deployment per-year array (from user_inputs)
-    deploy_arr = [USER_INPUTS['deployment_schedule'].get(j, 0) for j in range(N)]
     lease_up   = rev_a['lease_up_curve']
 
     r = 3  # row counter (rows 1–2 = title/subtitle)
@@ -224,24 +222,40 @@ def write_asmp(wb, P):
     AR['facility_sqft']= r;   inp(r, "Facility Floor Area",  "sqft", 100000,             FMT_INT); r += 1
 
     r += 1; _hdr(ws, r, "DEPLOYMENT SCHEDULE"); r += 1
-    AR['deploy_arr']  = r;    arr(r, "Racks deployed (this year)", "racks", deploy_arr, FMT_INT); r += 1
+    AR['phase1_pct'] = r; inp(r, "Phase 1 — % of total racks (Year 1)", "%",   0.50, FMT_P1); r += 1
+    AR['phase2_pct'] = r; inp(r, "Phase 2 — % of total racks (Year 4)", "%",   0.30, FMT_P1); r += 1
+    AR['phase3_pct'] = r; inp(r, "Phase 3 — % of total racks (Year 7)", "%",   0.20, FMT_P1); r += 1
+
+    # Derived: rack counts from percentages × total_racks
+    AR['deploy_arr'] = r
+    _lbl(ws, r, "Racks deployed (this year, derived)", "racks", italic=True)
+    _phase_pct_map = {0: 'phase1_pct', 3: 'phase2_pct', 6: 'phase3_pct'}
+    for j in range(N):
+        c = ws.cell(row=r, column=COL_YR0+j)
+        if j in _phase_pct_map:
+            c.value = f"=ROUND({_asmp('total_racks')}*ASMP!$C${AR[_phase_pct_map[j]]},0)"
+        else:
+            c.value = 0
+        c.fill = _fill("FFF9E6"); c.font = _font(col=DKGREY, ital=True)
+        c.number_format = FMT_INT; c.alignment = _aln(v="center")
+    r += 1
 
     r += 1; _hdr(ws, r, "LEASE-UP CURVE"); r += 1
     AR['lease_up']    = r;    arr(r, "Lease-up (% of total racks)",  "%", lease_up, FMT_P1); r += 1
 
     # ── REVENUE ───────────────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "REVENUE ASSUMPTIONS"); r += 1
-    AR['rack_mrc']      = r; inp(r, "Rack MRC (Year 1)",            "Cr/rack/mo",  0.005,    FMT_CR); r += 1
-    AR['rack_mrc_esc']  = r; inp(r, "Rack MRC escalation",          "% p.a.",      0.05,     FMT_P1); r += 1
-    AR['otc_fee']       = r; inp(r, "OTC fee per new rack (Yr 1)",  "Cr/rack",     0.0003,   FMT_CR); r += 1
+    AR['rack_mrc']      = r; inp(r, "Rack MRC (Year 1)",            "Cr/rack/mo",  rev_a['rack_mrc_crore'],             FMT_CR); r += 1
+    AR['rack_mrc_esc']  = r; inp(r, "Rack MRC escalation",          "% p.a.",      rev_a.get('rack_mrc_escalation', 0.05), FMT_P1); r += 1
+    AR['otc_fee']       = r; inp(r, "OTC fee per new rack (Yr 1)",  "Cr/rack",     rev_a.get('otc_fee_crore', 0.0003),    FMT_CR); r += 1
     AR['otc_esc']       = r; inp(r, "OTC fee escalation",           "% p.a.",      0.05,     FMT_P1); r += 1
-    AR['util_tariff']   = r; inp(r, "Grid tariff (Year 1)",         "Rs/kWh",      8.0,      FMT_CR); r += 1
-    AR['pwr_markup']    = r; inp(r, "Power markup",                 "Rs/kWh",      1.5,      FMT_CR); r += 1
+    AR['util_tariff']   = r; inp(r, "Grid tariff (Year 1)",         "Rs/kWh",      rev_a['utility_tariff_rs_per_kwh'],    FMT_CR); r += 1
+    AR['pwr_markup']    = r; inp(r, "Power markup",                 "Rs/kWh",      rev_a['power_markup_rs_per_kwh'],      FMT_CR); r += 1
     AR['tenant_tariff'] = r
     der(r, "Tenant power tariff (Year 1)", "Rs/kWh", f"=ASMP!$C${r-2}+ASMP!$C${r-1}", FMT_CR); r += 1
     AR['pwr_esc']       = r; inp(r, "Power tariff escalation",      "% p.a.",      0.05,     FMT_P1); r += 1
     AR['pue']           = r; inp(r, "PUE",                          "–",           rev_a['pue'],  FMT_CR); r += 1
-    AR['kw_per_rack']   = r; inp(r, "IT load per rack",             "kW/rack",     4.5,      FMT_CR); r += 1
+    AR['kw_per_rack']   = r; inp(r, "IT load per rack",             "kW/rack",     rev_a.get('kw_per_rack', 6.0), FMT_CR); r += 1
     AR['dot_share']     = r; inp(r, "DoT revenue share",            "%",           0.0,      FMT_P2); r += 1
 
     # ── CAPEX ─────────────────────────────────────────────────────────────
@@ -276,9 +290,11 @@ def write_asmp(wb, P):
     AR['ins_pct']    = r; inp(r, "Insurance (% of cumul CapEx)", "%",        0.005,         FMT_P2); r += 1
     AR['ptax_pct']   = r; inp(r, "Property tax (% of cumul CapEx)","%",      0.01,          FMT_P2); r += 1
     AR['gna_pct']    = r; inp(r, "G&A (% of net revenue)",       "%",        0.03,          FMT_P2); r += 1
-    AR['mkt_base']   = r; inp(r, "Marketing (Year 1)",           "Cr",       1.0,           FMT_CR); r += 1
-    AR['mkt_esc']    = r; inp(r, "Marketing escalation",         "% p.a.",   0.05,          FMT_P1); r += 1
-    AR['maint_cx']   = r; inp(r, "Maintenance CapEx (% cumul)",  "%",        0.01,          FMT_P2); r += 1
+    AR['mkt_pct_start']  = r; inp(r, "Marketing — Year 1 (% of net revenue)",  "%", 0.01,   FMT_P2); r += 1
+    AR['mkt_pct_end']    = r; inp(r, "Marketing — Year 10 (% of net revenue)", "%", 0.0025, FMT_P2); r += 1
+    AR['maint_cx']           = r; inp(r, "Maintenance CapEx rate (% of MEP)",       "%", 0.015,  FMT_P2);  r += 1
+    AR['maint_warranty']     = r; inp(r, "OEM warranty period",                    "yrs", 3,     FMT_INT); r += 1
+    AR['construction_years'] = r; inp(r, "Construction period",                    "yrs", 1,     FMT_INT); r += 1
 
     # ── DEPRECIATION ──────────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "DEPRECIATION — USEFUL LIVES (SLM)"); r += 1
@@ -605,11 +621,18 @@ def write_capex(wb):
         r += 1
 
     r += 1
-    # ── Maintenance CapEx (from year 5) ────────────────────────────────
+    # ── Maintenance CapEx — MEP-based, 3-yr OEM warranty seasoning ─────
+    # MEP per phase = total CapEx that phase − civil CapEx that phase
+    # Eligible after maint_warranty years post-deployment (OEM covers first 3 yrs)
     CAP_R['maint'] = r
-    _lbl(ws, r, "Maintenance CapEx (from Year 5)", "Cr")
+    _lbl(ws, r, "Maintenance CapEx (MEP-based, post-OEM warranty)", "Cr")
     for j in range(N):
-        f(r, j, f"=IF({cl(j)}4>=5,{_asmp('maint_cx')}*CAPEX!{cl(j)}{CAP_R['cumul']},0)")
+        eligible_terms = "+".join(
+            f"IF({cl(j)}4>=MAX({DEPLOY_XIDX[p]},{_asmp('construction_years')}+1)+{_asmp('maint_warranty')},"
+            f"CAPEX!${DEPLOY_XCOL[p]}${CAP_R['total']}-CAPEX!${DEPLOY_XCOL[p]}${CAP_R['civil']},0)"
+            for p in range(3)
+        )
+        f(r, j, f"={_asmp('maint_cx')}*({eligible_terms})")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 2
 
     # ── Sources & Uses ────────────────────────────────────────────────────
@@ -704,9 +727,13 @@ def write_opex(wb):
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     OPX_R['marketing'] = r
-    _lbl(ws, r, "Marketing", "Cr")
+    _lbl(ws, r, "Marketing (declining % of net revenue)", "Cr")
     for j in range(N):
-        f(r, j, f"={_asmp('mkt_base')}*(1+{_asmp('mkt_esc')})^({cl(j)}4-1)")
+        pct = (f"MAX({_asmp('mkt_pct_end')},"
+               f"{_asmp('mkt_pct_start')}"
+               f"-({_asmp('mkt_pct_start')}-{_asmp('mkt_pct_end')})"
+               f"*({cl(j)}4-1)/({_asmp('proj_years')}-1))")
+        f(r, j, f"={pct}*REV!{cl(j)}{REV_R['net']}")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     OPX_R['gna'] = r

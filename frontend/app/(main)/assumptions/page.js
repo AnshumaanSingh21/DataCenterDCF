@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useModel } from '@/lib/ModelContext';
-import { getDefaults, runModel } from '@/lib/api';
+import { getDefaults, getMarketValues, runModel } from '@/lib/api';
 import { Card } from '@/components/shared/Card';
 import { Button } from '@/components/shared/Button';
 import { CheckCircle, AlertCircle } from 'lucide-react';
@@ -63,19 +63,30 @@ const FACILITY_TYPES = [
 export default function AssumptionsPage() {
   const { updateResult, setLoading, setError, loading, error } = useModel();
   const router = useRouter();
-  const [form, setForm]     = useState(null);
-  const [success, setSuccess] = useState(false);
+  const [form, setForm]         = useState(null);
+  const [success, setSuccess]   = useState(false);
+  const [fetchingMarket, setFetchingMarket] = useState(false);
 
   useEffect(() => {
     getDefaults()
       .then(d => setForm(d))
       .catch(() => setForm({
         total_racks: 1000, location: 'Mumbai', facility_type: 'retail_colo',
-        start_year: 2026, projection_years: 10, pue: 1.6,
-        debt_pct: 0.50, moratorium_years: 2, interest_rate: 0.10,
-        rack_mrc_crore: 0.005, util_tariff: 8.0, power_markup: 1.5, kw_per_rack: 4.5,
+        start_year: 2026, projection_years: 10, pue: 1.63,
+        debt_pct: 0.50, moratorium_years: 3, interest_rate: 0.105,
+        rack_mrc_crore: 0.00625, util_tariff: 9.0, power_markup: 1.5, kw_per_rack: 6.0,
       }));
   }, []);
+
+  // Re-fetch LLM market values when location or facility_type changes
+  useEffect(() => {
+    if (!form) return;
+    setFetchingMarket(true);
+    getMarketValues(form.location, form.facility_type, form.kw_per_rack)
+      .then(mv => setForm(prev => ({ ...prev, ...mv })))
+      .catch(() => {})
+      .finally(() => setFetchingMarket(false));
+  }, [form?.location, form?.facility_type]);
 
   const onChange = e => {
     const { name, value } = e.target;
@@ -132,7 +143,10 @@ export default function AssumptionsPage() {
       </Card>
 
       <Card>
-        <SectionHeader>Revenue Parameters</SectionHeader>
+        <div className="flex items-center justify-between mb-4 mt-2">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF]">Revenue Parameters</div>
+          {fetchingMarket && <span className="text-[10px] text-[#0077C8] animate-pulse">Fetching market values...</span>}
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Rack MRC (Year 1)" name="rack_mrc_crore" value={form.rack_mrc_crore} onChange={onChange} step={0.0001} unit="Cr/rack/mo" />
           <Field label="Grid Tariff" name="util_tariff" value={form.util_tariff} onChange={onChange} step={0.5} unit="Rs/kWh" />

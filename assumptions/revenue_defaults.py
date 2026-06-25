@@ -8,16 +8,16 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
     # =====================================================
 
     "lease_up_curve": [
-        0.10,
-        0.16,
-        0.24,
-        0.33,
-        0.42,
-        0.51,
-        0.60,
-        0.69,
-        0.78,
-        0.87,
+        0.00,   # Year 1  — construction, not operational
+        0.10,   # Year 2  (+100 racks — anchor tenants, pre-contracted)
+        0.16,   # Year 3  (+60 racks — organic ramp begins)
+        0.23,   # Year 4  (+70 racks, +10 vs prior year)
+        0.31,   # Year 5  (+80 racks, +10)
+        0.40,   # Year 6  (+90 racks, +10)
+        0.50,   # Year 7  (+100 racks, +10)
+        0.61,   # Year 8  (+110 racks, +10)
+        0.73,   # Year 9  (+120 racks — plateau begins)
+        0.85,   # Year 10 (+120 racks, steady) — 85% occupancy
     ],
 
     "pue": 1.6,
@@ -242,9 +242,9 @@ FACILITY_TYPE_OVERRIDES = {
 
     "retail_colo": {
 
-        "kw_per_rack": 4.5,
+        "kw_per_rack": 6.0,
 
-        "power_per_rack_kw": 4.5,
+        "power_per_rack_kw": 6.0,
 
         "managed_services_penetration": 0.0,
     },

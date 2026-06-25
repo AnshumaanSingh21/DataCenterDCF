@@ -3,6 +3,12 @@ def get_default_depreciation_assumptions():
     return {
 
         # ==========================================
+        # CONSTRUCTION PERIOD
+        # ==========================================
+
+        "construction_years": 1,
+
+        # ==========================================
         # ASSET LIVES (YEARS)
         # ==========================================
 

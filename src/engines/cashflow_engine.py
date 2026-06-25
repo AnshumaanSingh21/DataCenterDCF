@@ -62,6 +62,7 @@ def compute_cashflow(
 
     maint_rate = 0.015
     warranty_years = 3
+    construction_years = opex_output.get("assumption_register", {}).get("construction_years", 0)
 
     # ----------------------------------
     # NOPAT
@@ -91,7 +92,8 @@ def compute_cashflow(
         eligible_mep = sum(
             mep_capex[j]
             for j in range(n)
-            if capex[j] > 0 and j <= i and (i - j) >= warranty_years
+            if capex[j] > 0 and j <= i
+            and (i - max(j, construction_years)) >= warranty_years
         )
         maintenance_capex.append(eligible_mep * maint_rate)
 
