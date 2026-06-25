@@ -18,7 +18,7 @@ def get_default_loan_assumptions():
 
         "loan_tenure_years": 10,
 
-        "moratorium_years": 3,
+        "moratorium_years": 2,
 
         # =====================================
         # REPAYMENT
