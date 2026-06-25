@@ -65,13 +65,28 @@ def compute_cashflow(
     construction_years = opex_output.get("assumption_register", {}).get("construction_years", 0)
 
     # ----------------------------------
-    # NOPAT
+    # NOPAT (unlevered, with loss carry-forward)
+    # FCFF stays unlevered — the interest tax
+    # shield lives in WACC, not here. But tax is
+    # only paid on positive EBIT, and operating
+    # losses are carried forward to shield future
+    # profit rather than generating a fictional
+    # refund in the loss year.
     # ----------------------------------
 
-    nopat = [
-        ebit[i] * (1 - tax_rate)
-        for i in range(n)
-    ]
+    nopat = []
+    unlevered_loss_pool = 0.0
+    for i in range(n):
+        e = ebit[i]
+        if e <= 0:
+            # operating loss flows through in full; no tax, no refund
+            unlevered_loss_pool += -e
+            nopat.append(e)
+        else:
+            setoff = min(unlevered_loss_pool, e)
+            unlevered_loss_pool -= setoff
+            taxable = e - setoff
+            nopat.append(e - taxable * tax_rate)
 
     # ----------------------------------
     # MAINTENANCE CAPEX
