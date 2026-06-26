@@ -1,6 +1,10 @@
 import sys
 import os
+import threading
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+
+# Serializes Excel generation (the generator uses module-level layout state)
+_EXCEL_LOCK = threading.Lock()
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -151,10 +155,6 @@ def _row(lst):
 
 # ── Pipeline runner ───────────────────────────────────────────────────────────
 
-# Last run's inputs + assumption dicts, captured so /api/download can
-# regenerate the Excel to match the dashboard without re-calling the LLM.
-_LAST_INPUTS = None
-
 
 def _build_inputs(req: RunRequest):
     """Build the engine inputs and per-engine assumption dicts from a request,
@@ -208,13 +208,7 @@ def _build_inputs(req: RunRequest):
 
 
 def run_pipeline(req: RunRequest):
-    global _LAST_INPUTS
     ui, A = _build_inputs(req)
-
-    # Persist this run's inputs + assumptions so /api/download can rebuild
-    # the Excel to match the dashboard (the base ui has no deployment_schedule;
-    # the Excel derives it from CapEx itself, same single-source rule).
-    _LAST_INPUTS = {"ui": ui, **A}
 
     # CapEx is the single source of truth for deployed capacity.
     # Compute it first, then cap revenue occupancy by what was
@@ -376,14 +370,23 @@ def run_model(req: RunRequest):
     }
 
 
-@app.get("/api/download")
-def download_excel():
+@app.post("/api/download")
+def download_excel(req: RunRequest):
+    """Stateless: the workbook is built from the posted assumptions, so two
+    users downloading at once never cross parameters. A lock serializes the
+    generator (which uses module-level layout state) and each request writes
+    its own temp file, cleaned up after the response is sent."""
+    import tempfile
+    from starlette.background import BackgroundTask
     try:
-        path = os.path.abspath(EXCEL_OUT)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        # Rebuild the workbook to match the most recent run; falls back to
-        # module defaults if the model hasn't been run yet this session.
-        generate(path, override=_LAST_INPUTS)
+        ui, A = _build_inputs(req)
+        override = {"ui": ui, **A}
+        out_dir = os.path.dirname(os.path.abspath(EXCEL_OUT))
+        os.makedirs(out_dir, exist_ok=True)
+        fd, path = tempfile.mkstemp(suffix=".xlsx", dir=out_dir)
+        os.close(fd)
+        with _EXCEL_LOCK:
+            generate(path, override=override)
     except Exception as exc:
         print(f"[Excel] generation failed: {exc}")
         print(traceback.format_exc())
@@ -392,4 +395,5 @@ def download_excel():
         path,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename="DataCenter_DCF_Model.xlsx",
+        background=BackgroundTask(lambda p: os.path.exists(p) and os.remove(p), path),
     )

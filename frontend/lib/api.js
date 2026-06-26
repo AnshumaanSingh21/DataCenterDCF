@@ -37,6 +37,22 @@ export async function runModel(assumptions) {
   return res.json();
 }
 
-export function getDownloadUrl() {
-  return `${API_BASE}/api/download`;
+export async function downloadExcel(assumptions) {
+  // Stateless download: POST the assumptions used for the run and stream back
+  // the workbook built from exactly those inputs (no shared server state).
+  const res = await fetch(`${API_BASE}/api/download`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(assumptions),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'DataCenter_DCF_Model.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }

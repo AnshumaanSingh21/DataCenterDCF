@@ -7,7 +7,7 @@ import {
   Building2, BarChart2, Waves, ChevronLeft, ChevronRight, Download,
 } from 'lucide-react';
 import { useModel } from '@/lib/ModelContext';
-import { getDownloadUrl } from '@/lib/api';
+import { downloadExcel } from '@/lib/api';
 
 const NAV_ITEMS = [
   { id: 'dashboard',    label: 'Dashboard',       icon: LayoutDashboard,   href: '/dashboard' },
@@ -80,8 +80,21 @@ function Sidebar({ collapsed, onToggle }) {
 }
 
 function Header({ title }) {
-  const { result } = useModel();
+  const { result, assumptions } = useModel();
   const canDownload = result?.excel_ready;
+  const [downloading, setDownloading] = useState(false);
+
+  const onDownload = async () => {
+    if (!assumptions || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadExcel(assumptions);
+    } catch (e) {
+      console.error('Excel download failed:', e);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div
@@ -104,14 +117,14 @@ function Header({ title }) {
       </Link>
 
       {canDownload ? (
-        <a
-          href={getDownloadUrl()}
-          download="DataCenter_DCF_Model.xlsx"
-          className="inline-flex items-center gap-2 bg-[#00338D] text-white text-sm font-semibold px-4 py-1.5 rounded-lg shadow-sm hover:bg-[#0044b8] transition-all duration-200 active:scale-[0.98]"
+        <button
+          onClick={onDownload}
+          disabled={downloading}
+          className="inline-flex items-center gap-2 bg-[#00338D] text-white text-sm font-semibold px-4 py-1.5 rounded-lg shadow-sm hover:bg-[#0044b8] transition-all duration-200 active:scale-[0.98] disabled:opacity-60"
         >
           <Download size={14} />
-          Download Excel
-        </a>
+          {downloading ? 'Preparing…' : 'Download Excel'}
+        </button>
       ) : (
         <button
           disabled
