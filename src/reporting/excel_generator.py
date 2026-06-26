@@ -922,8 +922,12 @@ def write_debt(wb):
     ]
 
     t_loan_rows = []  # loan amount scalar row per tranche
+    created_tranches = []  # tranche numbers actually within the horizon
 
     for tranche_no, draw_py, draw_xcol, draw_xidx in tranche_cfg:
+        if draw_py >= N:
+            continue  # phase drawn beyond the projection horizon — no tranche
+        created_tranches.append(tranche_no)
         r += 1
         _subhdr(ws, r, f"TRANCHE {tranche_no}  (drawn {YEARS[draw_py]})", 13); r += 1
 
@@ -995,21 +999,21 @@ def write_debt(wb):
     DBT_R['interest'] = r
     _lbl(ws, r, "Total interest expense", "Cr")
     for j in range(N):
-        terms = "+".join(f"DEBT!{cl(j)}{DBT_R[f't{i}_int']}" for i in range(1,4))
+        terms = "+".join(f"DEBT!{cl(j)}{DBT_R[f't{i}_int']}" for i in created_tranches)
         f(r, j, f"={terms}")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     DBT_R['principal'] = r
     _lbl(ws, r, "Total principal repayment", "Cr")
     for j in range(N):
-        terms = "+".join(f"DEBT!{cl(j)}{DBT_R[f't{i}_prin']}" for i in range(1,4))
+        terms = "+".join(f"DEBT!{cl(j)}{DBT_R[f't{i}_prin']}" for i in created_tranches)
         f(r, j, f"={terms}")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     DBT_R['closing'] = r
     _lbl(ws, r, "Closing debt balance", "Cr", bold=True)
     for j in range(N):
-        terms = "+".join(f"DEBT!{cl(j)}{DBT_R[f't{i}_clos']}" for i in range(1,4))
+        terms = "+".join(f"DEBT!{cl(j)}{DBT_R[f't{i}_clos']}" for i in created_tranches)
         f(r, j, f"={terms}", bold=True, fill=LTGREY)
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
     _w(ws, r, COL_YR0+N, f"=DEBT!L{r}", FMT_CR, True, LTGREY, bdr=True)

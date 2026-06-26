@@ -131,6 +131,98 @@ def test_dscr_profile_shape():
     assert dscr[-1] >= dscr[-3]
 
 
+# ── Excel generation (no crashes across scenarios/horizons) ─────────────────
+
+def _excel_override(user_inputs):
+    """Build a generate() override using default assumptions (no LLM)."""
+    return {
+        "ui":   user_inputs,
+        "rev":  get_default_revenue_assumptions(),
+        "cap":  get_default_capex_assumptions(),
+        "opx":  get_default_opex_assumptions(),
+        "dep":  get_default_depreciation_assumptions(),
+        "loan": get_default_loan_assumptions(),
+        "tax":  get_default_tax_assumptions(),
+        "wc":   get_default_working_capital_assumptions(),
+        "val":  get_default_valuation_assumptions(),
+    }
+
+
+def test_excel_generates_for_all_scenarios():
+    import tempfile, os
+    from src.reporting.excel_generator import generate
+    from openpyxl import load_workbook
+    cases = [BASE] + SCENARIOS + [{**BASE, "projection_years": y} for y in (5, 20)]
+    for s in cases:
+        fd, path = tempfile.mkstemp(suffix=".xlsx"); os.close(fd)
+        try:
+            generate(path, override=_excel_override(s))
+            wb = load_workbook(path)
+            assert "BS" in wb.sheetnames, f"BS tab missing for {s}"
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+
+
+# ── Excel ↔ engine parity (skips if the formula evaluator isn't installed) ──
+
+def test_excel_matches_engine_base():
+    try:
+        import formulas
+    except ImportError:
+        import pytest
+        pytest.skip("`formulas` not installed — parity check skipped")
+    import tempfile, os
+    import openpyxl.utils as U
+    from openpyxl import load_workbook
+    from src.reporting.excel_generator import generate
+
+    fd, path = tempfile.mkstemp(suffix=".xlsx"); os.close(fd)
+    try:
+        generate(path)  # default = Mumbai 1000-rack 10-yr, same inputs as run_model(BASE)
+        wb = load_workbook(path)
+        sol = formulas.ExcelModel().loads(path).finish().calculate()
+        fname = os.path.basename(path)
+
+        def label_row(sheet, prefix):
+            for row in wb[sheet].iter_rows(min_col=1, max_col=2):
+                for c in row:
+                    if isinstance(c.value, str) and c.value.strip().startswith(prefix):
+                        return c.row
+            return None
+
+        def series(sheet, row):
+            out = []
+            for j in range(10):
+                col = U.get_column_letter(3 + j)
+                v = sol.get("'[%s]%s'!%s%d" % (fname, sheet, col, row))
+                try:
+                    out.append(float(v.value[0, 0]))
+                except Exception:
+                    out.append(0.0)
+            return out
+
+        eng = run_model(BASE)
+        checks = [
+            ("CAPEX", "Total CapEx",             eng["cap"]["financials"]["total_capex"]),
+            ("DEBT",  "Total interest expense",  eng["loan"]["long_term_debt_account"]["interest_expense"]),
+            ("DEBT",  "Closing debt",            eng["loan"]["long_term_debt_account"]["closing_balance"]),
+            ("PNL",   "EBITDA",                  eng["cf"]["pnl"]["ebitda"]),
+            ("TAX",   "Income tax payable",      eng["tax"]["financials"]["tax"]),
+            ("CFS",   "CFADS",                   eng["cf"]["cashflows"]["cfads"]),
+        ]
+        for sheet, prefix, eng_vals in checks:
+            xl_vals = series(sheet, label_row(sheet, prefix))
+            for i, (a, b) in enumerate(zip(xl_vals, eng_vals)):
+                assert abs(a - b) < 0.6, f"{sheet}/{prefix} yr{i}: excel {a:.2f} vs engine {b:.2f}"
+
+        for v in series("BS", label_row("BS", "Balance check")):
+            assert abs(v) < 1e-3, "Excel balance sheet does not tie to zero"
+    finally:
+        if os.path.exists(path):
+            os.remove(path)
+
+
 if __name__ == "__main__":
     import traceback
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
