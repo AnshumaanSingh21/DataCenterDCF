@@ -30,13 +30,26 @@ function EmptyState() {
 }
 
 
+const FACILITY_LABELS = {
+  retail_colo: 'Retail Colo',
+  wholesale:   'Wholesale',
+  ai_hpc:      'AI / HPC',
+  hyperscale:  'Hyperscale',
+};
+
 export default function DashboardPage() {
-  const { result } = useModel();
+  const { result, assumptions } = useModel();
   const [showUsd, setShowUsd] = useState(false);
 
   if (!result) return <EmptyState />;
 
   const { kpis } = result;
+
+  const subtitle = assumptions
+    ? `${Number(assumptions.total_racks).toLocaleString()} Racks · ${assumptions.location} · ` +
+      `${FACILITY_LABELS[assumptions.facility_type] || assumptions.facility_type} · ` +
+      `${assumptions.projection_years}-Year Model`
+    : 'Project summary';
 
   const fmtCr = (val, dec = 1) => {
     if (val === null || val === undefined) return '—';
@@ -62,7 +75,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-[#1A1F36]">Project Dashboard</h1>
-          <p className="text-sm text-[#6B7280] mt-0.5">1,000 Racks · Mumbai · Retail Colo · 10-Year Model</p>
+          <p className="text-sm text-[#6B7280] mt-0.5">{subtitle}</p>
         </div>
         <button
           onClick={() => setShowUsd(u => !u)}
