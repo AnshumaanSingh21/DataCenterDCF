@@ -513,6 +513,7 @@ def compute_capex(
             )
 
             if phase_racks[i] > 0
+            and phase_years[i] < years
         ],
 
         "electrical_sizing":
