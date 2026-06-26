@@ -66,7 +66,7 @@ tax_output = compute_tax(
 )
 
 working_capital_output = compute_working_capital(
-    revenue_output, get_default_working_capital_assumptions()
+    revenue_output, get_default_working_capital_assumptions(), opex_output
 )
 
 cashflow_output = compute_cashflow(

@@ -166,7 +166,7 @@ def _asmp_arr(name, j):
 # ─── sheet row registries ─────────────────────────────────────────────────────
 SIZE_R = {}; REV_R  = {}; CAP_R  = {}; OPX_R  = {}
 DEP_R  = {}; DBT_R  = {}; TAX_R  = {}; WC_R   = {}
-PNL_R  = {}; CFS_R  = {}; VAL_R  = {}
+PNL_R  = {}; CFS_R  = {}; VAL_R  = {}; BS_R   = {}
 
 # ─── pipeline run ─────────────────────────────────────────────────────────────
 def _run_pipeline():
@@ -181,7 +181,7 @@ def _run_pipeline():
     dep = compute_depreciation(cap, _A("dep", get_default_depreciation_assumptions))
     loan = compute_loan(cap, _A("loan", get_default_loan_assumptions))
     tax = compute_tax(opx, dep, loan, _A("tax", get_default_tax_assumptions))
-    wc  = compute_working_capital(rev, _A("wc", get_default_working_capital_assumptions))
+    wc  = compute_working_capital(rev, _A("wc", get_default_working_capital_assumptions), opx)
     cf  = compute_cashflow(opx, cap, dep, loan, tax, wc, _A("val", get_default_valuation_assumptions))
     return dict(rev=rev, cap=cap, opx=opx, dep=dep, loan=loan, tax=tax, wc=wc, cf=cf)
 
@@ -241,9 +241,9 @@ def write_asmp(wb, P):
     AR['facility_sqft']= r;   inp(r, "Facility Floor Area",  "sqft", 100000,             FMT_INT); r += 1
 
     r += 1; _hdr(ws, r, "DEPLOYMENT SCHEDULE"); r += 1
-    AR['phase1_pct'] = r; inp(r, "Phase 1 — % of total racks (Year 1)", "%",   0.50, FMT_P1); r += 1
-    AR['phase2_pct'] = r; inp(r, "Phase 2 — % of total racks (Year 4)", "%",   0.30, FMT_P1); r += 1
-    AR['phase3_pct'] = r; inp(r, "Phase 3 — % of total racks (Year 7)", "%",   0.20, FMT_P1); r += 1
+    AR['phase1_pct'] = r; inp(r, "Phase 1 — % of total racks (Year 1)", "%",   cap_a['phase_1_pct'], FMT_P1); r += 1
+    AR['phase2_pct'] = r; inp(r, "Phase 2 — % of total racks (Year 4)", "%",   cap_a['phase_2_pct'], FMT_P1); r += 1
+    AR['phase3_pct'] = r; inp(r, "Phase 3 — % of total racks (Year 7)", "%",   cap_a['phase_3_pct'], FMT_P1); r += 1
 
     # Derived: rack counts from percentages × total_racks
     AR['deploy_arr'] = r
@@ -279,14 +279,16 @@ def write_asmp(wb, P):
 
     # ── CAPEX ─────────────────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "CAPEX ASSUMPTIONS"); r += 1
-    net_per_rack = round(cc['network_capex'][0] / 300, 6)
-    elec_per_rack = round(cc['electrical_capex'][0] / 300, 6)
+    # Per-rack fit-out cost = year-0 component capex ÷ actual phase-1 racks
+    _ph1 = P['cap']['drivers']['racks_deployed'][0] or 1
+    net_per_rack  = round(cc['network_capex'][0]    / _ph1, 6)
+    elec_per_rack = round(cc['electrical_capex'][0] / _ph1, 6)
     AR['civil_pr']   = r; inp(r, "Civil cost per rack",          "Cr/rack",  cap_a['civil_cost_per_rack'],       FMT_CR); r += 1
     AR['elec_pr']    = r; inp(r, "Electrical cost per rack",     "Cr/rack",  elec_per_rack,                     FMT_CR); r += 1
     AR['mech_pr']    = r; inp(r, "Mechanical cost per rack",     "Cr/rack",  cap_a['mechanical_cost_per_rack'],  FMT_CR); r += 1
     AR['it_pr']      = r; inp(r, "IT hardware cost per rack",    "Cr/rack",  cap_a['it_hardware_cost_per_rack'], FMT_CR); r += 1
     AR['net_pr']     = r; inp(r, "Network cost per rack",        "Cr/rack",  net_per_rack,  FMT_CR); r += 1
-    AR['preop_pct']  = r; inp(r, "Pre-operational (% hard cost)","% hard",   0.15,          FMT_P2); r += 1
+    AR['preop_pct']  = r; inp(r, "Pre-operational (% hard cost)","% hard",   cap_a.get('pre_op_pct', 0.10), FMT_P2); r += 1
     AR['software_c'] = r; inp(r, "Software CapEx (Phase 1 only)","Cr",       10.0,          FMT_CR); r += 1
     AR['land_c']       = r; inp(r, "Land cost (Phase 1 only)",              "Cr", P['cap']['site_sizing']['land_cost_crore'], FMT_CR); r += 1
     AR['siteprep_c']   = r; inp(r, "Site prep (consult + approvals, Ph1)", "Cr", 15.0,                                       FMT_CR); r += 1
@@ -307,7 +309,7 @@ def write_asmp(wb, P):
     AR['net_pct']    = r; inp(r, "Network opex (% of revenue)",  "%",        0.02,          FMT_P2); r += 1
     AR['sec_pct']    = r; inp(r, "Security (% of revenue)",      "%",        0.01,          FMT_P2); r += 1
     AR['ins_pct']    = r; inp(r, "Insurance (% of cumul CapEx)", "%",        0.005,         FMT_P2); r += 1
-    AR['ptax_pct']   = r; inp(r, "Property tax (% of cumul CapEx)","%",      0.01,          FMT_P2); r += 1
+    AR['ptax_pct']   = r; inp(r, "Property tax (% of land + civil)","%",     opx_a.get('property_tax_pct_of_asset_value', 0.0022), FMT_P2); r += 1
     AR['gna_pct']    = r; inp(r, "G&A (% of net revenue)",       "%",        0.03,          FMT_P2); r += 1
     AR['mkt_pct_start']  = r; inp(r, "Marketing — Year 1 (% of net revenue)",  "%", 0.01,   FMT_P2); r += 1
     AR['mkt_pct_end']    = r; inp(r, "Marketing — Year 10 (% of net revenue)", "%", 0.0025, FMT_P2); r += 1
@@ -339,7 +341,8 @@ def write_asmp(wb, P):
 
     # ── WORKING CAPITAL ───────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "WORKING CAPITAL"); r += 1
-    AR['wc_pct']     = r; inp(r, "Working capital (% of revenue)","% rev",  0.02, FMT_P2); r += 1
+    AR['dso']        = r; inp(r, "Receivable days (DSO)",         "days",   wc_a.get('receivable_days', 30), FMT_INT); r += 1
+    AR['dpo']        = r; inp(r, "Payable days (DPO)",            "days",   wc_a.get('payable_days', 30),    FMT_INT); r += 1
 
     # ── VALUATION ─────────────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "VALUATION"); r += 1
@@ -556,8 +559,14 @@ def write_capex(wb):
     r += 1; _hdr(ws, r, "CAPEX COMPONENTS"); r += 1
 
     CAP_R['civil'] = r
-    _lbl(ws, r, "Civil & structural", "Cr")
-    for j in range(N): f(r, j, pr_fml('civil_pr', j))
+    _lbl(ws, r, "Civil & structural (shell — full build, Ph1)", "Cr")
+    # Shell is built once for full capacity in year 1 (civil/rack × total racks),
+    # not phased — matches the engine's shell/fit-out split. Fit-out below stays phased.
+    for j in range(N):
+        if j == 0:
+            f(r, j, f"={_asmp('civil_pr')}*SUM(ASMP!{cl(0)}${AR['deploy_arr']}:{cl(N-1)}${AR['deploy_arr']})")
+        else:
+            f(r, j, 0)
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     CAP_R['elec'] = r
@@ -639,15 +648,16 @@ def write_capex(wb):
         r += 1
 
     r += 1
-    # ── Maintenance CapEx — MEP-based, 3-yr OEM warranty seasoning ─────
-    # MEP per phase = total CapEx that phase − civil CapEx that phase
-    # Eligible after maint_warranty years post-deployment (OEM covers first 3 yrs)
+    # ── Maintenance CapEx — M&E base (electrical + mechanical), 3-yr OEM warranty ──
+    # Base is the maintainable M&E plant only (matches engine); each phase becomes
+    # eligible maint_warranty years after commissioning. Period is 1-based (row 4),
+    # so the threshold is MAX(deploy_idx, construction_years) + warranty + 1.
     CAP_R['maint'] = r
-    _lbl(ws, r, "Maintenance CapEx (MEP-based, post-OEM warranty)", "Cr")
+    _lbl(ws, r, "Maintenance CapEx (M&E base, post-OEM warranty)", "Cr")
     for j in range(N):
         eligible_terms = "+".join(
-            f"IF({cl(j)}4>=MAX({DEPLOY_XIDX[p]},{_asmp('construction_years')}+1)+{_asmp('maint_warranty')},"
-            f"CAPEX!${DEPLOY_XCOL[p]}${CAP_R['total']}-CAPEX!${DEPLOY_XCOL[p]}${CAP_R['civil']},0)"
+            f"IF({cl(j)}4>=MAX({DEPLOY_XIDX[p]-1},{_asmp('construction_years')})+{_asmp('maint_warranty')}+1,"
+            f"CAPEX!${DEPLOY_XCOL[p]}${CAP_R['elec']}+CAPEX!${DEPLOY_XCOL[p]}${CAP_R['mech']},0)"
             for p in range(3)
         )
         f(r, j, f"={_asmp('maint_cx')}*({eligible_terms})")
@@ -703,21 +713,25 @@ def write_opex(wb):
                 f"*{_asmp('avg_ctc')}/100*(1+{_asmp('mp_esc')})^({cl(j)}4-1)")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
+    # Construction-year gate: these costs are zero until operations begin
+    # (period > construction_years), matching the engine.
+    cy_gate = lambda j: f"{cl(j)}4>{_asmp('construction_years')}"
+
     OPX_R['housekeeping'] = r
     _lbl(ws, r, "Housekeeping", "Cr")
     for j in range(N):
-        f(r, j, f"={_asmp('facility_sqft')}*{_asmp('hk_rate')}*(1+{_asmp('hk_esc')})^({cl(j)}4-1)/10000000")
+        f(r, j, f"=IF({cy_gate(j)},{_asmp('facility_sqft')}*{_asmp('hk_rate')}*(1+{_asmp('hk_esc')})^({cl(j)}4-1)/10000000,0)")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     OPX_R['amc'] = r
     _lbl(ws, r, "Maintenance (AMC, asset-based)", "Cr")
     for j in range(N):
         c = cl(j)
-        f(r, j, f"={_asmp('amc_civil')}*CAPEX!{c}{CAP_R['civil_c']}"
+        f(r, j, f"=IF({cy_gate(j)},{_asmp('amc_civil')}*CAPEX!{c}{CAP_R['civil_c']}"
                 f"+{_asmp('amc_elec')}*CAPEX!{c}{CAP_R['elec_c']}"
                 f"+{_asmp('amc_mech')}*CAPEX!{c}{CAP_R['mech_c']}"
                 f"+{_asmp('amc_net')}*CAPEX!{c}{CAP_R['net_c']}"
-                f"+{_asmp('amc_soft')}*CAPEX!{c}{CAP_R['soft_c']}")
+                f"+{_asmp('amc_soft')}*CAPEX!{c}{CAP_R['soft_c']},0)")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     OPX_R['network'] = r
@@ -735,13 +749,14 @@ def write_opex(wb):
     OPX_R['insurance'] = r
     _lbl(ws, r, "Insurance", "Cr")
     for j in range(N):
-        f(r, j, f"={_asmp('ins_pct')}*CAPEX!{cl(j)}{CAP_R['cumul']}")
+        f(r, j, f"=IF({cy_gate(j)},{_asmp('ins_pct')}*CAPEX!{cl(j)}{CAP_R['cumul']},0)")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     OPX_R['ptax'] = r
-    _lbl(ws, r, "Property tax", "Cr")
+    _lbl(ws, r, "Property tax (land + civil basis)", "Cr")
     for j in range(N):
-        f(r, j, f"={_asmp('ptax_pct')}*CAPEX!{cl(j)}{CAP_R['cumul']}")
+        base = f"({_asmp('land_c')}+SUM(CAPEX!$C${CAP_R['civil']}:{cl(j)}${CAP_R['civil']}))"
+        f(r, j, f"=IF({cy_gate(j)},{_asmp('ptax_pct')}*{base},0)")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     OPX_R['marketing'] = r
@@ -806,11 +821,14 @@ def write_depr(wb):
         if fill: c.fill = _fill(fill)
 
     def dep_fml(j, capex_row, life_key):
-        """SLM dep for year j = sum over phases of IF(yr_idx >= phase_idx, capex_phase/life, 0)"""
+        """SLM dep for year j = sum over phases of IF(period >= commissioning, capex_phase/life, 0).
+        Depreciation begins at commissioning = MAX(deploy_idx_0based, construction_years)+1
+        (1-based period), so assets deployed in the construction year aren't depreciated
+        until operations begin — matches the engine's dep_start = max(purchase_yr, constr_yrs)."""
         parts = []
         for ph_col, ph_idx in zip(DEPLOY_XCOL, DEPLOY_XIDX):
             parts.append(
-                f"IF({cl(j)}4>={ph_idx},"
+                f"IF({cl(j)}4>=MAX({ph_idx-1},{_asmp('construction_years')})+1,"
                 f"CAPEX!${ph_col}${capex_row}/{_asmp(life_key)},0)"
             )
         return "=" + "+".join(parts)
@@ -845,8 +863,8 @@ def write_depr(wb):
     DEP_R['soft'] = r
     _lbl(ws, r, "Software & licensing", "Cr")
     for j in range(N):
-        # Software only in Phase 1 (col C)
-        f(r, j, f"=IF({cl(j)}4>=1,CAPEX!$C${CAP_R['software']}/{_asmp('life_soft')},0)")
+        # Software deployed in Phase 1 (col C); deferred to commissioning like other assets
+        f(r, j, f"=IF({cl(j)}4>={_asmp('construction_years')}+1,CAPEX!$C${CAP_R['software']}/{_asmp('life_soft')},0)")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     r += 1
@@ -920,7 +938,9 @@ def write_debt(wb):
 
         # Repayment condition: year_index >= draw_xidx + moratorium + 1 (formula-driven via ASMP)
         rep_cond_tpl = f"{{c}}4>={draw_xidx}+{_asmp('morat')}+1"
-        annual_princ_fml = f"DEBT!${draw_xcol}${loan_r}/{_asmp('tenure')}"
+        # Amortize over the post-moratorium repayment period (tenure − moratorium)
+        # so the loan repays at the correct rate to mature on schedule (#5).
+        annual_princ_fml = f"DEBT!${draw_xcol}${loan_r}/({_asmp('tenure')}-{_asmp('morat')})"
 
         open_r = r; _lbl(ws, r, "  Opening balance", "Cr"); r += 1
         draw_r = r; _lbl(ws, r, "  Drawdown", "Cr"); r += 1
@@ -937,8 +957,12 @@ def write_debt(wb):
                 f(open_r, j, f"=DEBT!{cl(j-1)}{clos_r}")
             # Drawdown
             f(draw_r, j, f"=DEBT!{c}{loan_r}")
-            # Interest = rate × (opening + drawdown)
-            f(int_r,  j, f"={_asmp('int_rate')}*(DEBT!{c}{open_r}+DEBT!{c}{draw_r})")
+            # Interest = rate × (opening + drawdown); half-year in the draw
+            # year since the tranche is drawn progressively, not day one (#6).
+            if j == draw_py:
+                f(int_r, j, f"={_asmp('int_rate')}*(DEBT!{c}{open_r}+DEBT!{c}{draw_r})*0.5")
+            else:
+                f(int_r, j, f"={_asmp('int_rate')}*(DEBT!{c}{open_r}+DEBT!{c}{draw_r})")
             # Principal
             rep_cond = rep_cond_tpl.format(c=c)
             f(prin_r, j, f"=IF({rep_cond},MIN({annual_princ_fml},DEBT!{c}{open_r}+DEBT!{c}{draw_r}),0)")
@@ -1060,12 +1084,24 @@ def write_wc(wb):
         c.value = formula; c.number_format = fmt; c.font = _font(bold=bold)
         if fill: c.fill = _fill(fill)
 
-    r += 1; _hdr(ws, r, "WORKING CAPITAL"); r += 1
+    r += 1; _hdr(ws, r, "WORKING CAPITAL (DSO / DPO method)"); r += 1
+
+    WC_R['receivables'] = r
+    _lbl(ws, r, "Accounts receivable (Net rev × DSO/365)", "Cr")
+    for j in range(N):
+        f(r, j, f"=REV!{cl(j)}{REV_R['net']}*{_asmp('dso')}/365")
+    r += 1
+
+    WC_R['payables'] = r
+    _lbl(ws, r, "Accounts payable (Cash opex × DPO/365)", "Cr")
+    for j in range(N):
+        f(r, j, f"=OPEX!{cl(j)}{OPX_R['total']}*{_asmp('dpo')}/365")
+    r += 1
 
     WC_R['nwc'] = r
-    _lbl(ws, r, "Net working capital (% of revenue)", "Cr")
+    _lbl(ws, r, "Net working capital (AR − AP)", "Cr", bold=True)
     for j in range(N):
-        f(r, j, f"={_asmp('wc_pct')}*REV!{cl(j)}{REV_R['net']}")
+        f(r, j, f"=WC!{cl(j)}{WC_R['receivables']}-WC!{cl(j)}{WC_R['payables']}", FMT_CR, True, LTGREY)
     r += 1
 
     WC_R['delta'] = r
@@ -1311,6 +1347,135 @@ def write_cfs(wb):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# BS — Balance Sheet (3-statement, ties to zero)
+# ═══════════════════════════════════════════════════════════════════════════════
+def write_bs(wb):
+    ws = wb.create_sheet("BS")
+    _col_widths(ws); _title_row(ws, "BALANCE SHEET", "Full 3-statement balance sheet — ties to zero every year")
+    ws.freeze_panes = "C5"
+
+    r = 3; _yr_hdrs(ws, r, r+1); r += 2
+
+    def f(row, j, formula, fmt=FMT_CR, bold=False, fill=None):
+        c = ws.cell(row=row, column=COL_YR0+j)
+        c.value = formula; c.number_format = fmt; c.font = _font(bold=bold)
+        if fill: c.fill = _fill(fill)
+
+    # ── CASH ROLL-FORWARD (needed for cash & the financing gap) ──────────────
+    r += 1; _hdr(ws, r, "CASH FLOW (roll-forward)"); r += 1
+
+    BS_R['cfo'] = r
+    _lbl(ws, r, "Operating cash flow (PAT + Dep − ΔWC)", "Cr")
+    for j in range(N):
+        f(r, j, f"=PNL!{cl(j)}{PNL_R['pat']}+DEPR!{cl(j)}{DEP_R['total']}-WC!{cl(j)}{WC_R['delta']}")
+    r += 1
+
+    BS_R['cfi'] = r
+    _lbl(ws, r, "Investing cash flow (− CapEx)", "Cr")
+    for j in range(N):
+        f(r, j, f"=-CAPEX!{cl(j)}{CAP_R['total']}")
+    r += 1
+
+    BS_R['cff'] = r
+    _lbl(ws, r, "Financing cash flow (Draw − Principal + Equity)", "Cr")
+    for j in range(N):
+        f(r, j, f"=DEBT!{cl(j)}{DBT_R['drawdown']}-DEBT!{cl(j)}{DBT_R['principal']}+DEBT!{cl(j)}{DBT_R['equity']}")
+    r += 1
+
+    BS_R['cash_raw'] = r
+    _lbl(ws, r, "Cash before financing gap (cumulative)", "Cr")
+    for j in range(N):
+        chg = f"BS!{cl(j)}{BS_R['cfo']}+BS!{cl(j)}{BS_R['cfi']}+BS!{cl(j)}{BS_R['cff']}"
+        if j == 0:
+            f(r, j, f"={chg}")
+        else:
+            f(r, j, f"=BS!{cl(j-1)}{BS_R['cash_raw']}+{chg}")
+    r += 1
+
+    # ── ASSETS ───────────────────────────────────────────────────────────────
+    r += 1; _hdr(ws, r, "ASSETS"); r += 1
+
+    BS_R['nfa'] = r
+    _lbl(ws, r, "Net fixed assets", "Cr")
+    for j in range(N):
+        f(r, j, f"=DEPR!{cl(j)}{DEP_R['nbv']}")
+    r += 1
+
+    BS_R['ar'] = r
+    _lbl(ws, r, "Accounts receivable", "Cr")
+    for j in range(N):
+        f(r, j, f"=WC!{cl(j)}{WC_R['receivables']}")
+    r += 1
+
+    BS_R['cash'] = r
+    _lbl(ws, r, "Cash & equivalents", "Cr")
+    for j in range(N):
+        f(r, j, f"=MAX(BS!{cl(j)}{BS_R['cash_raw']},0)")
+    r += 1
+
+    BS_R['ta'] = r
+    _lbl(ws, r, "Total assets", "Cr", bold=True, fill=LTGREY)
+    for j in range(N):
+        f(r, j, f"=BS!{cl(j)}{BS_R['nfa']}+BS!{cl(j)}{BS_R['ar']}+BS!{cl(j)}{BS_R['cash']}", FMT_CR, True, LTGREY)
+    r += 1
+
+    # ── LIABILITIES & EQUITY ─────────────────────────────────────────────────
+    r += 1; _hdr(ws, r, "LIABILITIES & EQUITY"); r += 1
+
+    BS_R['debt'] = r
+    _lbl(ws, r, "Long-term debt", "Cr")
+    for j in range(N):
+        f(r, j, f"=DEBT!{cl(j)}{DBT_R['closing']}")
+    r += 1
+
+    BS_R['ap'] = r
+    _lbl(ws, r, "Accounts payable", "Cr")
+    for j in range(N):
+        f(r, j, f"=WC!{cl(j)}{WC_R['payables']}")
+    r += 1
+
+    BS_R['addl_fin'] = r
+    _lbl(ws, r, "Additional financing required", "Cr")
+    for j in range(N):
+        f(r, j, f"=MAX(-BS!{cl(j)}{BS_R['cash_raw']},0)")
+    r += 1
+
+    BS_R['paid_in'] = r
+    _lbl(ws, r, "Paid-in equity", "Cr")
+    for j in range(N):
+        if j == 0:
+            f(r, j, f"=DEBT!{cl(0)}{DBT_R['equity']}")
+        else:
+            f(r, j, f"=BS!{cl(j-1)}{BS_R['paid_in']}+DEBT!{cl(j)}{DBT_R['equity']}")
+    r += 1
+
+    BS_R['re'] = r
+    _lbl(ws, r, "Retained earnings", "Cr")
+    for j in range(N):
+        if j == 0:
+            f(r, j, f"=PNL!{cl(0)}{PNL_R['pat']}")
+        else:
+            f(r, j, f"=BS!{cl(j-1)}{BS_R['re']}+PNL!{cl(j)}{PNL_R['pat']}")
+    r += 1
+
+    BS_R['tle'] = r
+    _lbl(ws, r, "Total liabilities & equity", "Cr", bold=True, fill=LTGREY)
+    for j in range(N):
+        f(r, j, f"=BS!{cl(j)}{BS_R['debt']}+BS!{cl(j)}{BS_R['ap']}+BS!{cl(j)}{BS_R['addl_fin']}"
+                f"+BS!{cl(j)}{BS_R['paid_in']}+BS!{cl(j)}{BS_R['re']}", FMT_CR, True, LTGREY)
+    r += 1
+
+    BS_R['check'] = r
+    _lbl(ws, r, "Balance check (Assets − L&E)", "Cr", bold=True)
+    for j in range(N):
+        f(r, j, f"=BS!{cl(j)}{BS_R['ta']}-BS!{cl(j)}{BS_R['tle']}", FMT_CR, True)
+    r += 1
+
+    _col_widths(ws)
+    return ws
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # VAL — Valuation
 # ═══════════════════════════════════════════════════════════════════════════════
 def write_val(wb):
@@ -1535,6 +1700,7 @@ def write_cover(wb):
         ("WC",    "Working capital"),
         ("PNL",   "Profit & Loss statement"),
         ("CFS",   "Cash flow statement — FCFF, FCFE, DSCR"),
+        ("BS",    "Balance sheet — assets, liabilities & equity"),
         ("VAL",   "Valuation — WACC, DCF, IRR"),
         ("DASH",  "Executive dashboard"),
     ]
@@ -1654,6 +1820,9 @@ def generate(out_path: str = "outputs/excel_models/dcf_model.xlsx", override: di
 
     print("Writing CFS…")
     write_cfs(wb)
+
+    print("Writing BS…")
+    write_bs(wb)
 
     print("Writing VAL…")
     write_val(wb)

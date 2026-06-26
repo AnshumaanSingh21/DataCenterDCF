@@ -14,7 +14,7 @@ def get_default_working_capital_assumptions():
 
         "receivable_days": 30,
 
-        "payable_days": 15,
+        "payable_days": 30,
 
         "inventory_days": 0
     }

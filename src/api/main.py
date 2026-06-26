@@ -228,7 +228,7 @@ def run_pipeline(req: RunRequest):
     dep  = compute_depreciation(cap, A["dep"])
     loan = compute_loan(cap, A["loan"])
     tax  = compute_tax(opx, dep, loan, A["tax"])
-    wc   = compute_working_capital(rev, A["wc"])
+    wc   = compute_working_capital(rev, A["wc"], opx)
     cf   = compute_cashflow(opx, cap, dep, loan, tax, wc, A["val"])
 
     return rev, cap, opx, dep, loan, tax, wc, cf

@@ -368,6 +368,60 @@ def compute_cashflow(
     sources_and_uses.append(total_su)
 
     # ----------------------------------
+    # BALANCE SHEET & CASH ROLL-FORWARD
+    # Built on operating/accounting flows (no terminal value). The balance
+    # check (Assets - Liabilities - Equity) must be ~0 every year; any drift
+    # signals an internal inconsistency across the engines.
+    # ----------------------------------
+
+    net_book_value = depreciation_output["financials"]["net_book_value"]
+    wc_level       = working_capital_output["financials"]["working_capital"]
+
+    # Cash account (indirect method): CFO + CFI + CFF, rolled forward.
+    # Interest is already inside PAT, so CFO is post-interest.
+    cfo = [pat[i] + depreciation[i] - change_in_wc[i] for i in range(n)]
+    cfi = [-capex[i] for i in range(n)]
+    cff = [debt_drawdown[i] - principal[i] + equity_funding[i] for i in range(n)]
+    net_change_in_cash = [cfo[i] + cfi[i] + cff[i] for i in range(n)]
+
+    cash_opening = [0.0] * n
+    cash_raw     = [0.0] * n   # rolled-forward cash before any financing of the gap
+    running_cash = 0.0
+    for i in range(n):
+        cash_opening[i] = running_cash
+        running_cash   += net_change_in_cash[i]
+        cash_raw[i]     = running_cash
+
+    # A balance sheet cannot carry negative cash. Where the rolled-forward
+    # balance is negative, the project has an unfunded ramp-year shortfall:
+    # floor cash at zero and surface the gap as a neutral funding-side line
+    # ("additional financing required") between Debt and Equity. The owner
+    # decides whether to meet it with debt or equity; the model only sizes it.
+    cash_closing = [max(cash_raw[i], 0.0)  for i in range(n)]
+    additional_financing_required = [max(-cash_raw[i], 0.0) for i in range(n)]
+
+    # Equity = paid-in (cumulative injections) + retained earnings (cumulative PAT)
+    paid_in_equity = []
+    _re = 0.0
+    for e in equity_funding:
+        _re += e
+        paid_in_equity.append(_re)
+
+    retained_earnings = []
+    _rr = 0.0
+    for p in pat:
+        _rr += p
+        retained_earnings.append(_rr)
+
+    total_assets_bs      = [net_book_value[i] + cash_closing[i] + wc_level[i] for i in range(n)]
+    total_liabilities_bs = [closing_debt[i] + additional_financing_required[i] for i in range(n)]
+    total_equity_bs      = [paid_in_equity[i] + retained_earnings[i] for i in range(n)]
+    balance_check        = [
+        round(total_assets_bs[i] - (total_liabilities_bs[i] + total_equity_bs[i]), 6)
+        for i in range(n)
+    ]
+
+    # ----------------------------------
     # DATAFRAMES
     # ----------------------------------
 
@@ -416,6 +470,22 @@ def compute_cashflow(
         "Equity Injected": equity_funding,
         "Cumul Equity":    cumulative_equity,
         "FCFE":            fcfe,
+    })
+
+    balance_sheet_df = pd.DataFrame({
+        "Year":                          years,
+        "Net Fixed Assets":              net_book_value,
+        "Cash":                          cash_closing,
+        "Working Capital":               wc_level,
+        "Total Assets":                  total_assets_bs,
+        "Debt":                          closing_debt,
+        "Additional Financing Required": additional_financing_required,
+        "Paid-in Equity":                paid_in_equity,
+        "Retained Earnings":             retained_earnings,
+        "Total Liab & Equity":           [
+            total_liabilities_bs[i] + total_equity_bs[i] for i in range(n)
+        ],
+        "Balance Check":                 balance_check,
     })
 
     # ----------------------------------
@@ -488,6 +558,24 @@ def compute_cashflow(
 
         "sources_and_uses": sources_and_uses,
 
+        "balance_sheet": {
+            "net_fixed_assets":              net_book_value,
+            "cash":                          cash_closing,
+            "working_capital":               wc_level,
+            "total_assets":                  total_assets_bs,
+            "debt":                          closing_debt,
+            "additional_financing_required": additional_financing_required,
+            "total_liabilities":             total_liabilities_bs,
+            "paid_in_equity":                paid_in_equity,
+            "retained_earnings":             retained_earnings,
+            "total_equity":                  total_equity_bs,
+            "balance_check":                 balance_check,
+            "cfo":                cfo,
+            "cfi":                cfi,
+            "cff":                cff,
+            "net_change_in_cash": net_change_in_cash,
+        },
+
         # investor_metrics — alias for external runners that expect this key
         "investor_metrics": {
             "project_irr": project_irr,
@@ -511,10 +599,11 @@ def compute_cashflow(
         },
 
         "dataframes": {
-            "pnl_df":        pnl_df,
-            "cashflow_df":   cashflow_df,
-            "debt_df":       debt_df,
-            "su_df":         su_df,
-            "equity_df":     equity_df,
+            "pnl_df":           pnl_df,
+            "cashflow_df":      cashflow_df,
+            "debt_df":          debt_df,
+            "su_df":            su_df,
+            "equity_df":        equity_df,
+            "balance_sheet_df": balance_sheet_df,
         },
     }
