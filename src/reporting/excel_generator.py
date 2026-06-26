@@ -56,7 +56,7 @@ DEPLOY_XIDX = [1, 4, 7]
 # ─── colours ──────────────────────────────────────────────────────────────────
 NAVY    = "1F3864"; DKGREY  = "404040"; MDGREY  = "808080"
 LTGREY  = "F2F2F2"; BLUE_IN = "EBF3FB"; WHITE   = "FFFFFF"
-GRNCELL = "E8F5E9"; REDDARK = "C00000"
+GRNCELL = "E8F5E9"; REDDARK = "C00000"; SRC_IN  = "DAEEF3"  # market-sourced (AI) input — light teal
 
 # ─── style helpers ────────────────────────────────────────────────────────────
 def _fill(h): return PatternFill("solid", fgColor=h)
@@ -210,10 +210,12 @@ def write_asmp(wb, P):
     r = 3  # row counter (rows 1–2 = title/subtitle)
     _yr_hdrs(ws, r, r+1); r += 2  # rows 3,4
 
-    def inp(row, label, unit, val, fmt=FMT_CR, col=None, ah="right"):
+    def inp(row, label, unit, val, fmt=FMT_CR, col=None, ah="right", src=False):
+        # src=True → market-sourced (AI/market-intelligence) value, coloured
+        # distinctly so it isn't mistaken for a hand-entered hardcode.
         _lbl(ws, row, label, unit)
         c = ws.cell(row=row, column=COL_YR0)
-        c.value = val; c.fill = _fill(BLUE_IN); c.font = _font(col=col or "1F3864", bold=True)
+        c.value = val; c.fill = _fill(SRC_IN if src else BLUE_IN); c.font = _font(col=col or "1F3864", bold=True)
         c.alignment = _aln(h=ah, v="center")
         if fmt: c.number_format = fmt
 
@@ -264,16 +266,16 @@ def write_asmp(wb, P):
 
     # ── REVENUE ───────────────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "REVENUE ASSUMPTIONS"); r += 1
-    AR['rack_mrc']      = r; inp(r, "Rack MRC (Year 1)",            "Cr/rack/mo",  rev_a['rack_mrc_crore'],             FMT_CR); r += 1
+    AR['rack_mrc']      = r; inp(r, "Rack MRC (Year 1)",            "Cr/rack/mo",  rev_a['rack_mrc_crore'],             FMT_CR, src=True); r += 1
     AR['rack_mrc_esc']  = r; inp(r, "Rack MRC escalation",          "% p.a.",      rev_a.get('rack_mrc_escalation', 0.05), FMT_P1); r += 1
     AR['otc_fee']       = r; inp(r, "OTC fee per new rack (Yr 1)",  "Cr/rack",     rev_a.get('otc_fee_crore', 0.0003),    FMT_CR); r += 1
     AR['otc_esc']       = r; inp(r, "OTC fee escalation",           "% p.a.",      0.05,     FMT_P1); r += 1
-    AR['util_tariff']   = r; inp(r, "Grid tariff (Year 1)",         "Rs/kWh",      rev_a['utility_tariff_rs_per_kwh'],    FMT_CR); r += 1
-    AR['pwr_markup']    = r; inp(r, "Power markup",                 "Rs/kWh",      rev_a['power_markup_rs_per_kwh'],      FMT_CR); r += 1
+    AR['util_tariff']   = r; inp(r, "Grid tariff (Year 1)",         "Rs/kWh",      rev_a['utility_tariff_rs_per_kwh'],    FMT_CR, src=True); r += 1
+    AR['pwr_markup']    = r; inp(r, "Power markup",                 "Rs/kWh",      rev_a['power_markup_rs_per_kwh'],      FMT_CR, src=True); r += 1
     AR['tenant_tariff'] = r
     der(r, "Tenant power tariff (Year 1)", "Rs/kWh", f"=ASMP!$C${r-2}+ASMP!$C${r-1}", FMT_CR); r += 1
     AR['pwr_esc']       = r; inp(r, "Power tariff escalation",      "% p.a.",      0.05,     FMT_P1); r += 1
-    AR['pue']           = r; inp(r, "PUE",                          "–",           rev_a['pue'],  FMT_CR); r += 1
+    AR['pue']           = r; inp(r, "PUE",                          "–",           rev_a['pue'],  FMT_CR, src=True); r += 1
     AR['kw_per_rack']   = r; inp(r, "IT load per rack",             "kW/rack",     rev_a.get('kw_per_rack', 6.0), FMT_CR); r += 1
     AR['dot_share']     = r; inp(r, "DoT revenue share",            "%",           0.0,      FMT_P2); r += 1
 
@@ -283,14 +285,14 @@ def write_asmp(wb, P):
     _ph1 = P['cap']['drivers']['racks_deployed'][0] or 1
     net_per_rack  = round(cc['network_capex'][0]    / _ph1, 6)
     elec_per_rack = round(cc['electrical_capex'][0] / _ph1, 6)
-    AR['civil_pr']   = r; inp(r, "Civil cost per rack",          "Cr/rack",  cap_a['civil_cost_per_rack'],       FMT_CR); r += 1
-    AR['elec_pr']    = r; inp(r, "Electrical cost per rack",     "Cr/rack",  elec_per_rack,                     FMT_CR); r += 1
-    AR['mech_pr']    = r; inp(r, "Mechanical cost per rack",     "Cr/rack",  cap_a['mechanical_cost_per_rack'],  FMT_CR); r += 1
+    AR['civil_pr']   = r; inp(r, "Civil cost per rack",          "Cr/rack",  cap_a['civil_cost_per_rack'],       FMT_CR, src=True); r += 1
+    AR['elec_pr']    = r; inp(r, "Electrical cost per rack",     "Cr/rack",  elec_per_rack,                     FMT_CR, src=True); r += 1
+    AR['mech_pr']    = r; inp(r, "Mechanical cost per rack",     "Cr/rack",  cap_a['mechanical_cost_per_rack'],  FMT_CR, src=True); r += 1
     AR['it_pr']      = r; inp(r, "IT hardware cost per rack",    "Cr/rack",  cap_a['it_hardware_cost_per_rack'], FMT_CR); r += 1
     AR['net_pr']     = r; inp(r, "Network cost per rack",        "Cr/rack",  net_per_rack,  FMT_CR); r += 1
     AR['preop_pct']  = r; inp(r, "Pre-operational (% hard cost)","% hard",   cap_a.get('pre_op_pct', 0.10), FMT_P2); r += 1
     AR['software_c'] = r; inp(r, "Software CapEx (Phase 1 only)","Cr",       10.0,          FMT_CR); r += 1
-    AR['land_c']       = r; inp(r, "Land cost (Phase 1 only)",              "Cr", P['cap']['site_sizing']['land_cost_crore'], FMT_CR); r += 1
+    AR['land_c']       = r; inp(r, "Land cost (Phase 1 only)",              "Cr", P['cap']['site_sizing']['land_cost_crore'], FMT_CR, src=True); r += 1
     AR['siteprep_c']   = r; inp(r, "Site prep (consult + approvals, Ph1)", "Cr", 15.0,                                       FMT_CR); r += 1
     AR['misc_infra_c'] = r; inp(r, "Misc infrastructure (HT line, facade, commissioning, Ph1)", "Cr", cap_a.get('misc_infrastructure_cost_crore', 0.0), FMT_CR); r += 1
 
@@ -331,7 +333,7 @@ def write_asmp(wb, P):
     AR['debt_pct']   = r; inp(r, "Debt / Total CapEx",           "%",        loan_a['debt_pct'], FMT_P2); r += 1
     AR['eq_pct']     = r
     der(r, "Equity / Total CapEx", "%", f"=1-ASMP!$C${r-1}", FMT_P2); r += 1
-    AR['int_rate']   = r; inp(r, "Interest rate",                "% p.a.",   loan_a['interest_rate'], FMT_P2); r += 1
+    AR['int_rate']   = r; inp(r, "Interest rate",                "% p.a.",   loan_a['interest_rate'], FMT_P2, src=True); r += 1
     AR['morat']      = r; inp(r, "Moratorium",                   "years",    loan_a['moratorium_years'], FMT_INT); r += 1
     AR['tenure']     = r; inp(r, "Loan tenure",                  "years",    10,   FMT_INT); r += 1
 
@@ -1024,7 +1026,7 @@ def write_tax(wb):
     ws = wb.create_sheet("TAX")
     _col_widths(ws)
     _title_row(ws, "TAXATION",
-               "Simplified: tax accrues when cumulative EBT turns positive (loss carry-forward)")
+               "Tax accrues when cumulative taxable profit turns positive (loss carry-forward)")
     ws.freeze_panes = "C5"
 
     r = 3; _yr_hdrs(ws, r, r+1); r += 2
@@ -1037,13 +1039,13 @@ def write_tax(wb):
     r += 1; _hdr(ws, r, "TAX SCHEDULE"); r += 1
 
     TAX_R['ebt'] = r
-    _lbl(ws, r, "EBT / PBT (from P&L)", "Cr")
+    _lbl(ws, r, "EBT", "Cr")
     for j in range(N):
         f(r, j, f"=PNL!{cl(j)}{PNL_R['ebt']}")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     TAX_R['cumul_ebt'] = r
-    _lbl(ws, r, "Cumulative EBT", "Cr")
+    _lbl(ws, r, "Cumulative taxable profit", "Cr")
     for j in range(N):
         if j == 0:
             f(r, j, f"=TAX!{cl(0)}{TAX_R['ebt']}")
@@ -1729,10 +1731,11 @@ def write_cover(wb):
     ws.cell(r, 1).font  = _font(True, DKGREY)
     r += 1
     legend = [
-        (BLUE_IN, "Blue  — hardcoded input (change only in ASMP)"),
-        (LTGREY,  "Grey  — calculated total"),
-        (GRNCELL, "Green — cross-sheet formula"),
-        ("FFF9E6", "Amber — derived assumption (formula in ASMP)"),
+        (BLUE_IN, "Blue   — hardcoded input (change only in ASMP)"),
+        (SRC_IN,  "Teal   — market-sourced (AI) input — rack MRC, tariff, markup, PUE, interest, land, civil/elec/mech"),
+        (LTGREY,  "Grey   — calculated total"),
+        (GRNCELL, "Green  — cross-sheet formula"),
+        ("FFF9E6", "Amber  — derived assumption (formula in ASMP)"),
     ]
     for fill_hex, label in legend:
         ws.cell(r, 1).fill = _fill(fill_hex)
