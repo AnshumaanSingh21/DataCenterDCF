@@ -1033,7 +1033,7 @@ def write_tax(wb):
     ws = wb.create_sheet("TAX")
     _col_widths(ws)
     _title_row(ws, "TAXATION",
-               "Tax accrues when cumulative taxable profit turns positive (loss carry-forward)")
+               "Loss carry-forward pool; tax only on profit after losses are absorbed (never negative)")
     ws.freeze_panes = "C5"
 
     r = 3; _yr_hdrs(ws, r, r+1); r += 2
@@ -1051,24 +1051,27 @@ def write_tax(wb):
         f(r, j, f"=PNL!{cl(j)}{PNL_R['ebt']}")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
-    TAX_R['cumul_ebt'] = r
-    _lbl(ws, r, "Cumulative taxable profit", "Cr")
+    # Loss carry-forward pool (closing balance): grows in loss years, absorbed
+    # by future profits. closing = MAX(prior_pool − EBT, 0).
+    TAX_R['lcf'] = r
+    _lbl(ws, r, "Loss carried forward", "Cr")
     for j in range(N):
         if j == 0:
-            f(r, j, f"=TAX!{cl(0)}{TAX_R['ebt']}")
+            f(r, j, f"=MAX(-TAX!{cl(0)}{TAX_R['ebt']},0)")
         else:
-            f(r, j, f"=TAX!{cl(j-1)}{TAX_R['cumul_ebt']}+TAX!{cl(j)}{TAX_R['ebt']}")
+            f(r, j, f"=MAX(TAX!{cl(j-1)}{TAX_R['lcf']}-TAX!{cl(j)}{TAX_R['ebt']},0)")
     r += 1
 
+    # Tax = rate × profit remaining after absorbing the opening loss pool;
+    # floored at zero, so a loss year never produces a refund.
     TAX_R['tax'] = r
     _lbl(ws, r, "Income tax payable", "Cr", bold=True)
     for j in range(N):
-        cebt = TAX_R['cumul_ebt']
         if j == 0:
-            f(r, j, f"=MAX(TAX!{cl(0)}{cebt},0)*{_asmp('tax_rate')}", bold=True, fill=LTGREY)
+            f(r, j, f"=MAX(TAX!{cl(0)}{TAX_R['ebt']},0)*{_asmp('tax_rate')}", bold=True, fill=LTGREY)
         else:
             f(r, j,
-              f"=(MAX(TAX!{cl(j)}{cebt},0)-MAX(TAX!{cl(j-1)}{cebt},0))*{_asmp('tax_rate')}",
+              f"=MAX(TAX!{cl(j)}{TAX_R['ebt']}-TAX!{cl(j-1)}{TAX_R['lcf']},0)*{_asmp('tax_rate')}",
               FMT_CR, True, LTGREY)
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY, bdr=True)
@@ -1769,7 +1772,7 @@ def _predeclare_rows():
         'tax': 15, 'pat': 16, 'pat_m': 17,
     })
     # TAX layout: header at row 6, data from row 7
-    TAX_R.update({'ebt': 7, 'cumul_ebt': 8, 'tax': 9})
+    TAX_R.update({'ebt': 7, 'lcf': 8, 'tax': 9})
     # WC layout (for CFS forward ref safety)
     WC_R.update({'nwc': 7, 'delta': 8})
 

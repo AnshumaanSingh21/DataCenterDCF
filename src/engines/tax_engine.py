@@ -33,25 +33,29 @@ def compute_tax(
     pbt  = [ebit[i] - interest_expense[i] for i in range(years)]
 
     # ----------------------------------
-    # CUMULATIVE TAXABLE PROFIT (book loss carry-forward)
-    # ----------------------------------
-    cumulative_pbt = []
-    running = 0.0
-    for p in pbt:
-        running += p
-        cumulative_pbt.append(running)
-
-    # ----------------------------------
-    # INCOME TAX PAYABLE
-    # Tax the increase in positive cumulative PBT at the corporate rate, so
-    # nothing is taxed until prior losses are absorbed.
+    # INCOME TAX with loss carry-forward pool
+    # Losses accumulate in a carry-forward pool and offset future profits.
+    # Tax is charged only on profit remaining after the pool is absorbed, and
+    # is never negative — a loss year pays zero tax and grows the pool (no
+    # phantom refund), even if it follows profitable years.
     # ----------------------------------
     tax = []
-    prev_pos = 0.0
+    taxable_income = []
+    loss_carried_forward = []   # closing pool each year
+    loss_pool = 0.0
+
     for i in range(years):
-        cur_pos = max(cumulative_pbt[i], 0.0)
-        tax.append((cur_pos - prev_pos) * tax_rate)
-        prev_pos = cur_pos
+        p = pbt[i]
+        if p < 0:
+            loss_pool += -p
+            taxable = 0.0
+        else:
+            setoff = min(loss_pool, p)
+            loss_pool -= setoff
+            taxable = p - setoff
+        taxable_income.append(taxable)
+        loss_carried_forward.append(loss_pool)
+        tax.append(taxable * tax_rate)
 
     pat = [pbt[i] - tax[i] for i in range(years)]
 
@@ -63,7 +67,8 @@ def compute_tax(
         "EBIT":                  ebit,
         "Interest Expense":      interest_expense,
         "PBT (EBT)":             pbt,
-        "Cumulative Taxable Profit": cumulative_pbt,
+        "Loss Carried Forward":  loss_carried_forward,
+        "Taxable Income":        taxable_income,
         "Income Tax Payable":    tax,
         "PAT":                   pat,
     })
@@ -71,11 +76,12 @@ def compute_tax(
     return {
 
         "financials": {
-            "ebit":                     ebit,
-            "pbt":                      pbt,
-            "cumulative_taxable_profit": cumulative_pbt,
-            "tax":                      tax,
-            "pat":                      pat,
+            "ebit":                  ebit,
+            "pbt":                   pbt,
+            "loss_carried_forward":  loss_carried_forward,
+            "taxable_income":        taxable_income,
+            "tax":                   tax,
+            "pat":                   pat,
         },
 
         "dataframes": {
