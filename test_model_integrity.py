@@ -166,20 +166,19 @@ def test_excel_generates_for_all_scenarios():
 
 # ── Excel ↔ engine parity (skips if the formula evaluator isn't installed) ──
 
-def test_excel_matches_engine_base():
-    try:
-        import formulas
-    except ImportError:
-        import pytest
-        pytest.skip("`formulas` not installed — parity check skipped")
+def _assert_excel_matches_engine(user_inputs):
+    """Generate the workbook for `user_inputs`, evaluate its formulas, and assert
+    the headline lines match the engine and the balance sheet ties to zero."""
     import tempfile, os
     import openpyxl.utils as U
     from openpyxl import load_workbook
+    import formulas
     from src.reporting.excel_generator import generate
 
+    n = user_inputs["projection_years"]
     fd, path = tempfile.mkstemp(suffix=".xlsx"); os.close(fd)
     try:
-        generate(path)  # default = Mumbai 1000-rack 10-yr, same inputs as run_model(BASE)
+        generate(path, override=_excel_override(user_inputs))
         wb = load_workbook(path)
         sol = formulas.ExcelModel().loads(path).finish().calculate()
         fname = os.path.basename(path)
@@ -193,7 +192,7 @@ def test_excel_matches_engine_base():
 
         def series(sheet, row):
             out = []
-            for j in range(10):
+            for j in range(n):
                 col = U.get_column_letter(3 + j)
                 v = sol.get("'[%s]%s'!%s%d" % (fname, sheet, col, row))
                 try:
@@ -202,7 +201,7 @@ def test_excel_matches_engine_base():
                     out.append(0.0)
             return out
 
-        eng = run_model(BASE)
+        eng = run_model(user_inputs)
         checks = [
             ("CAPEX", "Total CapEx",             eng["cap"]["financials"]["total_capex"]),
             ("DEBT",  "Total interest expense",  eng["loan"]["long_term_debt_account"]["interest_expense"]),
@@ -213,14 +212,37 @@ def test_excel_matches_engine_base():
         ]
         for sheet, prefix, eng_vals in checks:
             xl_vals = series(sheet, label_row(sheet, prefix))
-            for i, (a, b) in enumerate(zip(xl_vals, eng_vals)):
-                assert abs(a - b) < 0.6, f"{sheet}/{prefix} yr{i}: excel {a:.2f} vs engine {b:.2f}"
+            for i, (a, b) in enumerate(zip(xl_vals, eng_vals[:n])):
+                assert abs(a - b) < 0.6, f"[{user_inputs['location']}/{user_inputs['total_racks']}r] {sheet}/{prefix} yr{i}: excel {a:.2f} vs engine {b:.2f}"
 
         for v in series("BS", label_row("BS", "Balance check")):
             assert abs(v) < 1e-3, "Excel balance sheet does not tie to zero"
     finally:
         if os.path.exists(path):
             os.remove(path)
+
+
+def test_excel_matches_engine_base():
+    try:
+        import formulas  # noqa: F401
+    except ImportError:
+        import pytest
+        pytest.skip("`formulas` not installed — parity check skipped")
+    _assert_excel_matches_engine(BASE)
+
+
+def test_excel_matches_engine_nondefault():
+    # Different rack count + location + facility — would have caught the
+    # hardcoded Project-Overview inputs that made formulas use the wrong racks.
+    try:
+        import formulas  # noqa: F401
+    except ImportError:
+        import pytest
+        pytest.skip("`formulas` not installed — parity check skipped")
+    _assert_excel_matches_engine({
+        "location": "Hyderabad", "total_racks": 1500, "facility_type": "wholesale",
+        "projection_years": 10, "start_year": 2026,
+    })
 
 
 if __name__ == "__main__":

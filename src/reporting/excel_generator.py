@@ -234,13 +234,16 @@ def write_asmp(wb, P):
         c.number_format = fmt; c.alignment = _aln(v="center")
 
     # ── PROJECT OVERVIEW ──────────────────────────────────────────────────
+    # Pull from the actual run inputs, not literals — Total Racks and Facility
+    # Floor Area also feed formulas (deployment array, housekeeping), so stale
+    # literals would make the workbook compute wrong for non-default runs.
     r += 1; _hdr(ws, r, "PROJECT OVERVIEW"); r += 1
-    AR['total_racks'] = r;    inp(r, "Total Racks",         "racks", 1000,              FMT_INT); r += 1
-    AR['location']    = r;    inp(r, "Location",             "–",    "Mumbai",           None, ah="left"); r += 1
-    AR['facility_type']= r;   inp(r, "Facility Type",        "–",    "retail_colo",      None, ah="left"); r += 1
-    AR['start_year']  = r;    inp(r, "Start Year",           "–",    2026,               FMT_YR); r += 1
-    AR['proj_years']  = r;    inp(r, "Projection Years",     "yrs",  10,                 FMT_INT); r += 1
-    AR['facility_sqft']= r;   inp(r, "Facility Floor Area",  "sqft", 100000,             FMT_INT); r += 1
+    AR['total_racks'] = r;    inp(r, "Total Racks",         "racks", USER_INPUTS["total_racks"],    FMT_INT); r += 1
+    AR['location']    = r;    inp(r, "Location",             "–",    USER_INPUTS["location"],        None, ah="left"); r += 1
+    AR['facility_type']= r;   inp(r, "Facility Type",        "–",    USER_INPUTS["facility_type"],   None, ah="left"); r += 1
+    AR['start_year']  = r;    inp(r, "Start Year",           "–",    USER_INPUTS["start_year"],      FMT_YR); r += 1
+    AR['proj_years']  = r;    inp(r, "Projection Years",     "yrs",  USER_INPUTS["projection_years"], FMT_INT); r += 1
+    AR['facility_sqft']= r;   inp(r, "Facility Floor Area",  "sqft", P['cap']['site_sizing']['facility_sqft'], FMT_INT); r += 1
 
     r += 1; _hdr(ws, r, "DEPLOYMENT SCHEDULE"); r += 1
     AR['phase1_pct'] = r; inp(r, "Phase 1 — % of total racks (Year 1)", "%",   cap_a['phase_1_pct'], FMT_P1); r += 1
