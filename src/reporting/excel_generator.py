@@ -1636,7 +1636,10 @@ def write_val(wb):
 def write_dash(wb):
     ws = wb.create_sheet("DASH")
     _col_widths(ws); _title_row(ws, "EXECUTIVE DASHBOARD",
-                                 "Greenfield Data Center | Mumbai | 1,000 Racks | 2026–2035")
+                                 f"Greenfield Data Center | {USER_INPUTS['location']} | "
+                                 f"{USER_INPUTS['total_racks']:,} Racks | "
+                                 f"{USER_INPUTS['facility_type'].replace('_',' ').title()} | "
+                                 f"{YEARS[0]}–{YEARS[-1]}")
     ws.freeze_panes = "C5"
 
     r = 3; _yr_hdrs(ws, r, r+1); r += 2
@@ -1713,7 +1716,8 @@ def write_cover(wb):
 
     ws.merge_cells("A3:C3")
     sc = ws.cell(3, 1)
-    sc.value = f"  Mumbai | 1,000 Racks | {YEARS[0]}–{YEARS[-1]}"
+    sc.value = (f"  {USER_INPUTS['location']} | {USER_INPUTS['total_racks']:,} Racks | "
+                f"{USER_INPUTS['facility_type'].replace('_',' ').title()} | {YEARS[0]}–{YEARS[-1]}")
     sc.font  = _font(ital=True, col=MDGREY); sc.alignment = _aln("left")
 
     sheets = [
