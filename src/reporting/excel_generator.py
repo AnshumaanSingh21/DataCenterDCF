@@ -205,7 +205,12 @@ def write_asmp(wb, P):
     wc_a   = _A("wc", get_default_working_capital_assumptions)
     val_a  = _A("val", get_default_valuation_assumptions)
 
-    lease_up   = rev_a['lease_up_curve']
+    # Pad the lease-up curve to the projection horizon, holding the terminal
+    # plateau (85%) for years beyond the base curve — matches the engine.
+    # Without this, an 11+ year workbook leaves later years blank (0% occupancy),
+    # collapsing revenue/EBITDA and the terminal value → broken IRR/NPV.
+    _curve = rev_a['lease_up_curve']
+    lease_up = (list(_curve) + [_curve[-1]] * (N - len(_curve))) if N > len(_curve) else _curve[:N]
 
     r = 3  # row counter (rows 1–2 = title/subtitle)
     _yr_hdrs(ws, r, r+1); r += 2  # rows 3,4
@@ -1242,10 +1247,24 @@ def write_cfs(wb):
 
     r += 1; _hdr(ws, r, "PROJECT FREE CASH FLOW (FCFF)"); r += 1
 
-    CFS_R['nopat'] = r
-    _lbl(ws, r, "NOPAT  (EBIT × (1 - tax rate))", "Cr")
+    # Unlevered loss pool — so NOPAT in a loss year flows through in full
+    # (no phantom tax shield), matching the engine's FCFF treatment.
+    CFS_R['unlev_lcf'] = r
+    _lbl(ws, r, "Unlevered loss carried forward", "Cr")
     for j in range(N):
-        f(r, j, f"=PNL!{cl(j)}{PNL_R['ebit']}*(1-{_asmp('tax_rate')})")
+        if j == 0:
+            f(r, j, f"=MAX(-PNL!{cl(0)}{PNL_R['ebit']},0)")
+        else:
+            f(r, j, f"=MAX(CFS!{cl(j-1)}{CFS_R['unlev_lcf']}-PNL!{cl(j)}{PNL_R['ebit']},0)")
+    r += 1
+
+    CFS_R['nopat'] = r
+    _lbl(ws, r, "NOPAT  (unlevered, loss carry-fwd)", "Cr")
+    for j in range(N):
+        if j == 0:
+            f(r, j, f"=PNL!{cl(0)}{PNL_R['ebit']}-MAX(PNL!{cl(0)}{PNL_R['ebit']},0)*{_asmp('tax_rate')}")
+        else:
+            f(r, j, f"=PNL!{cl(j)}{PNL_R['ebit']}-MAX(PNL!{cl(j)}{PNL_R['ebit']}-CFS!{cl(j-1)}{CFS_R['unlev_lcf']},0)*{_asmp('tax_rate')}")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     CFS_R['dep_add'] = r
@@ -1277,7 +1296,7 @@ def write_cfs(wb):
     _lbl(ws, r, "FCFF", "Cr", bold=True, fill=LTGREY)
     for j in range(N):
         terms = "+".join(f"CFS!{cl(j)}{CFS_R[k]}"
-                         for k in ('nopat','dep_add','delta_wc','capex','maint_cx'))
+                         for k in ('nopat','dep_add','delta_wc','capex'))
         f(r, j, f"={terms}", FMT_CR, True, LTGREY)
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY, bdr=True); r += 1
@@ -1298,12 +1317,6 @@ def write_cfs(wb):
     _lbl(ws, r, "Add: debt drawdown", "Cr")
     for j in range(N):
         f(r, j, f"=DEBT!{cl(j)}{DBT_R['drawdown']}")
-    r += 1
-
-    CFS_R['eq_inj'] = r
-    _lbl(ws, r, "Less: equity injection", "Cr")
-    for j in range(N):
-        f(r, j, f"=-DEBT!{cl(j)}{DBT_R['equity']}")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
     CFS_R['principal'] = r
@@ -1312,19 +1325,16 @@ def write_cfs(wb):
         f(r, j, f"=-DEBT!{cl(j)}{DBT_R['principal']}")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
 
-    CFS_R['int_paid'] = r
-    _lbl(ws, r, "Less: interest paid (post-tax shield)", "Cr")
-    for j in range(N):
-        f(r, j, f"=-DEBT!{cl(j)}{DBT_R['interest']}*(1-{_asmp('tax_rate')})")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
-
     r += 1
     CFS_R['fcfe'] = r
     _lbl(ws, r, "FCFE", "Cr", bold=True, fill=LTGREY)
+    # FCFE = PAT + Dep − ΔWC − CapEx + Drawdown − Principal (matches engine).
+    # Interest is already inside PAT; equity injection is not a flow to equity.
     for j in range(N):
-        terms = "+".join(f"CFS!{cl(j)}{CFS_R[k]}"
-                         for k in ('fcff','drawdown','eq_inj','principal','int_paid'))
-        f(r, j, f"={terms}", FMT_CR, True, LTGREY)
+        f(r, j, f"=PNL!{cl(j)}{PNL_R['pat']}+CFS!{cl(j)}{CFS_R['dep_add']}"
+                f"+CFS!{cl(j)}{CFS_R['delta_wc']}+CFS!{cl(j)}{CFS_R['capex']}"
+                f"+CFS!{cl(j)}{CFS_R['drawdown']}+CFS!{cl(j)}{CFS_R['principal']}",
+          FMT_CR, True, LTGREY)
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY, bdr=True); r += 2
 
@@ -1509,6 +1519,8 @@ def write_val(wb):
         c.value = formula; c.number_format = fmt; c.font = _font(bold=bold)
         if fill: c.fill = _fill(fill)
 
+    LC = cl(N - 1)  # dynamic last data column — handles any horizon, not just 10
+
     # ── WACC ──────────────────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "WACC BUILD"); r += 1
     VAL_R['coe']       = r; fsc(r, f"={_asmp('cost_eq')}",  "Cost of equity",     "% p.a.", FMT_P2); r += 1
@@ -1525,10 +1537,10 @@ def write_val(wb):
     # ── Terminal value ────────────────────────────────────────────────────
     _hdr(ws, r, "TERMINAL VALUE"); r += 1
     VAL_R['mult']      = r; fsc(r, f"={_asmp('ev_mult')}", "EV/EBITDA multiple",  "x", FMT_MX); r += 1
-    VAL_R['ebitda10']  = r; fsc(r, f"=OPEX!L{OPX_R['ebitda']}", "EBITDA Year 10", "Cr"); r += 1
+    VAL_R['ebitda10']  = r; fsc(r, f"=OPEX!{LC}{OPX_R['ebitda']}", "EBITDA (final year)", "Cr"); r += 1
     VAL_R['tv']        = r
     fsc(r, f"=VAL!$C${VAL_R['mult']}*VAL!$C${VAL_R['ebitda10']}", "Terminal EV", "Cr", FMT_CR, True); r += 1
-    VAL_R['res_debt']  = r; fsc(r, f"=DEBT!L{DBT_R['closing']}", "Residual debt (Year 10)", "Cr"); r += 1
+    VAL_R['res_debt']  = r; fsc(r, f"=DEBT!{LC}{DBT_R['closing']}", "Residual debt (final year)", "Cr"); r += 1
     VAL_R['eq_tv']     = r
     fsc(r, f"=MAX(VAL!$C${VAL_R['tv']}-VAL!$C${VAL_R['res_debt']},0)",
         "Equity terminal value", "Cr", FMT_CR, True); r += 2
@@ -1550,31 +1562,33 @@ def write_val(wb):
             f(r, j, f"=VAL!{cl(j)}{VAL_R['fcff']}+VAL!$C${VAL_R['tv']}", bold=True, fill=LTGREY)
     r += 1
 
+    # Year-end convention matches the engine: year 1 (construction) at t=0
+    # (undiscounted), so the exponent is (period − 1).
     VAL_R['df'] = r
-    _lbl(ws, r, "Discount factor  (1/(1+WACC)^yr)", "")
+    _lbl(ws, r, "Discount factor  (1/(1+WACC)^(yr-1))", "")
     for j in range(N):
-        f(r, j, f"=1/(1+VAL!$C${VAL_R['wacc']})^{cl(j)}4", FMT_CR)
+        f(r, j, f"=1/(1+VAL!$C${VAL_R['wacc']})^({cl(j)}4-1)", FMT_CR)
     r += 1
 
     VAL_R['pv_fcff'] = r
-    _lbl(ws, r, "PV of FCFF", "Cr")
+    _lbl(ws, r, "PV of FCFF (explicit, excl. TV)", "Cr")
     for j in range(N):
-        f(r, j, f"=VAL!{cl(j)}{VAL_R['fcff_tv']}*VAL!{cl(j)}{VAL_R['df']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 2
+        f(r, j, f"=VAL!{cl(j)}{VAL_R['fcff']}*VAL!{cl(j)}{VAL_R['df']}")
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{LC}{r})", FMT_CR); r += 2
 
     # ── Returns summary ───────────────────────────────────────────────────
     _hdr(ws, r, "RETURNS SUMMARY"); r += 1
 
     VAL_R['proj_irr'] = r
-    fsc(r, f"=IRR(C{VAL_R['fcff_tv']}:L{VAL_R['fcff_tv']},0.1)",
+    fsc(r, f"=IRR(C{VAL_R['fcff_tv']}:{LC}{VAL_R['fcff_tv']},0.1)",
         "Project IRR", "% p.a.", FMT_P2, True); r += 1
 
     VAL_R['sum_pv_fcff'] = r
-    fsc(r, f"=SUM(C{VAL_R['pv_fcff']}:L{VAL_R['pv_fcff']})",
-        "Sum PV (FCFF, excl. TV)", "Cr"); r += 1
+    fsc(r, f"=SUM(C{VAL_R['pv_fcff']}:{LC}{VAL_R['pv_fcff']})",
+        "PV of explicit FCFF", "Cr"); r += 1
 
     VAL_R['pv_tv'] = r
-    fsc(r, f"=VAL!$C${VAL_R['tv']}/(1+VAL!$C${VAL_R['wacc']})^10",
+    fsc(r, f"=VAL!$C${VAL_R['tv']}/(1+VAL!$C${VAL_R['wacc']})^{N-1}",
         "PV of terminal value", "Cr"); r += 1
 
     VAL_R['npv'] = r
@@ -1599,15 +1613,17 @@ def write_val(wb):
     r += 1
 
     VAL_R['eq_irr'] = r
-    fsc(r, f"=IRR(C{VAL_R['fcfe_tv']}:L{VAL_R['fcfe_tv']},0.1)",
+    fsc(r, f"=IRR(C{VAL_R['fcfe_tv']}:{LC}{VAL_R['fcfe_tv']},0.1)",
         "Equity IRR", "% p.a.", FMT_P2, True); r += 1
 
+    # Total equity invested = all the cash equity actually puts in (the negative
+    # FCFE years), matching the engine's MOIC denominator.
     VAL_R['eq_inv'] = r
-    fsc(r, f"=SUM(CAPEX!C{CAP_R['eq_fund']}:L{CAP_R['eq_fund']})",
+    fsc(r, f"=-SUMIF(C{VAL_R['fcfe_tv']}:{LC}{VAL_R['fcfe_tv']},\"<0\")",
         "Total equity invested", "Cr"); r += 1
 
     VAL_R['moic'] = r
-    fsc(r, f"=SUMIF(C{VAL_R['fcfe_tv']}:L{VAL_R['fcfe_tv']},\">0\")/VAL!$C${VAL_R['eq_inv']}",
+    fsc(r, f"=SUMIF(C{VAL_R['fcfe_tv']}:{LC}{VAL_R['fcfe_tv']},\">0\")/VAL!$C${VAL_R['eq_inv']}",
         "MOIC (equity multiple)", "x", FMT_MX, True); r += 1
 
     _col_widths(ws)

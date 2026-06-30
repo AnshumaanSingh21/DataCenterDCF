@@ -217,6 +217,26 @@ def _assert_excel_matches_engine(user_inputs):
 
         for v in series("BS", label_row("BS", "Balance check")):
             assert abs(v) < 1e-3, "Excel balance sheet does not tie to zero"
+
+        # Valuation scalars (NPV / IRR / MOIC) — the returns block, where the
+        # terminal-value and horizon bugs hid. These must match the engine.
+        def val_scalar(prefix):
+            for row in wb["VAL"].iter_rows(min_col=1, max_col=2):
+                for c in row:
+                    if isinstance(c.value, str) and c.value.strip().startswith(prefix):
+                        v = sol.get("'[%s]VAL'!C%d" % (fname, c.row))
+                        try:
+                            return float(v.value[0, 0])
+                        except Exception:
+                            return None
+            return None
+
+        ev = eng["cf"]["valuation"]
+        tag = f"[{user_inputs['location']}/{user_inputs['total_racks']}r/{n}y]"
+        assert abs(val_scalar("NPV") - ev["npv"]) < 2.0, f"{tag} NPV: excel {val_scalar('NPV'):.1f} vs engine {ev['npv']:.1f}"
+        assert abs(val_scalar("Project IRR") - ev["project_irr"]) < 0.006, f"{tag} Project IRR mismatch"
+        assert abs(val_scalar("Equity IRR") - ev["equity_irr"]) < 0.006, f"{tag} Equity IRR mismatch"
+        assert abs(val_scalar("MOIC") - eng["cf"]["equity"]["moic"]) < 0.15, f"{tag} MOIC mismatch"
     finally:
         if os.path.exists(path):
             os.remove(path)
@@ -232,8 +252,9 @@ def test_excel_matches_engine_base():
 
 
 def test_excel_matches_engine_nondefault():
-    # Different rack count + location + facility — would have caught the
-    # hardcoded Project-Overview inputs that made formulas use the wrong racks.
+    # Non-default rack count + location + facility AND a 15-year horizon — the
+    # 15-year case exercises the lease-up padding + dynamic valuation ranges that
+    # broke the Excel returns block beyond year 10.
     try:
         import formulas  # noqa: F401
     except ImportError:
@@ -241,7 +262,7 @@ def test_excel_matches_engine_nondefault():
         pytest.skip("`formulas` not installed — parity check skipped")
     _assert_excel_matches_engine({
         "location": "Hyderabad", "total_racks": 1500, "facility_type": "wholesale",
-        "projection_years": 10, "start_year": 2026,
+        "projection_years": 15, "start_year": 2026,
     })
 
 
