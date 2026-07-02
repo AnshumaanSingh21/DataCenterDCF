@@ -124,10 +124,13 @@ def test_base_case_metrics_within_tolerance():
     #      replacing the 12x exit multiple. TV = FCFF_final x (1+g)/(WACC-g).
     #  (5) meet-me room / interconnection fit-out added to network capex
     #      (Rs 50k/rack) — the CapEx that enables cross-connect revenue.
-    assert abs(v["npv"] - 119.7) < 2.0,                f"NPV drifted: {v['npv']}"
-    assert abs(v["project_irr"] - 0.159) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
-    assert abs(v["equity_irr"] - 0.182) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
-    assert abs(cf["equity"]["moic"] - 3.54) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
+    #  (6) electrical unit prices market-corrected: UPS ~Rs 90L/frame and DG
+    #      ~Rs 3 Cr/unit (both were ~2x low), transformer Rs 45L (was high).
+    #      Electrical capex 0.069 -> 0.103 Cr/rack, aligning with CBRE sample.
+    assert abs(v["npv"] - 84.6) < 2.0,                 f"NPV drifted: {v['npv']}"
+    assert abs(v["project_irr"] - 0.144) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
+    assert abs(v["equity_irr"] - 0.162) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
+    assert abs(cf["equity"]["moic"] - 3.02) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
 
 
 def test_dscr_profile_shape():

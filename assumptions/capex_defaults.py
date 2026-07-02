@@ -145,27 +145,31 @@ def get_default_capex_assumptions():
         # ELECTRICAL EQUIPMENT COSTS
         # =====================================================
 
-        # UPS
+        # UPS — DC-grade 500 kVA modular frame ~Rs 90L all-in (10x60k modules +
+        # 30L frame). Market: DC-grade 500 kVA UPS Rs 85L-1.5Cr; the prior
+        # Rs 40L/frame was bottom-of-range (non-DC-grade), ~2x low.
 
-        "ups_module_cost": 250000,
+        "ups_module_cost": 600000,
 
-        "ups_frame_cost": 1500000,
+        "ups_frame_cost": 3000000,
 
         # Battery
 
         "battery_unit_cost": 150000,
 
-        # DG
+        # DG — 2500 kVA CPCB IV+ silent genset. Market: Cummins 2000 kVA silent
+        # ~Rs 2.45 Cr; 2500 kVA ~Rs 2.8-3.5 Cr. Prior Rs 1.5 Cr supply was ~1.8x low.
 
-        "dg_supply_cost": 15000000,
+        "dg_supply_cost": 28000000,
 
         "dg_acm_cost": 450000,
 
         "dg_installation_cost": 1200000,
 
-        # Transformer
+        # Transformer — 3150-3500 kVA (market: Rs 33.6-45L for 3150 kVA). Prior
+        # Rs 70L was ~1.5x high; corrected down (partly offsets UPS/DG increases).
 
-        "transformer_supply_cost": 7000000,
+        "transformer_supply_cost": 4500000,
 
         "transformer_panel_cost": 2500000,
 
