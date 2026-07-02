@@ -289,9 +289,20 @@ def compute_revenue(user_inputs, assumptions):
     # CROSS CONNECT REVENUE
     # ---------------------------------
 
+    # Penetration ramps with the network effect: initial rate for the first few
+    # operational years, then a step-up to the mature rate as the facility fills.
+    _xc_pen_init   = assumptions.get("cross_connect_penetration_initial",
+                                     assumptions.get("cross_connect_penetration", 0.0))
+    _xc_pen_mature = assumptions.get("cross_connect_penetration_mature", _xc_pen_init)
+    _xc_ramp       = assumptions.get("cross_connect_ramp_years", 3)
+    cross_connect_penetration_by_year = [
+        _xc_pen_init if i <= _xc_ramp else _xc_pen_mature
+        for i in range(years)
+    ]
+
     cross_connect_revenue = [
         occupied_racks[i]
-        * assumptions["cross_connect_penetration"]
+        * cross_connect_penetration_by_year[i]
         * cross_connect_fee[i]
         * 12
         for i in range(years)

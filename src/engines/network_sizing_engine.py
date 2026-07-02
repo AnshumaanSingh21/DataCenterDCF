@@ -46,6 +46,10 @@ def compute_network_sizing(total_racks, assumptions):
     kvm_cost           = kvm_switch_count       * assumptions["kvm_switch_cost"]
     cabling_cost       = cable_length_ft        * assumptions["network_cable_cost_per_ft"]
 
+    # Meet-me room / interconnection fit-out: the infrastructure that enables
+    # cross-connect revenue (patch frames, backbone fibre, carrier entry).
+    meet_me_room_cost  = total_racks * assumptions.get("meet_me_room_cost_per_rack", 0)
+
     total_cost = (
         perimeter_cost
         + spine_cost
@@ -53,6 +57,7 @@ def compute_network_sizing(total_racks, assumptions):
         + load_balancer_cost
         + kvm_cost
         + cabling_cost
+        + meet_me_room_cost
     )
 
     total_cost *= (1 + contingency_pct)
@@ -73,6 +78,7 @@ def compute_network_sizing(total_racks, assumptions):
             "load_balancer_cost": load_balancer_cost,
             "kvm_cost":          kvm_cost,
             "cabling_cost":      cabling_cost,
+            "meet_me_room_cost": meet_me_room_cost,
         },
 
         "quantities": {

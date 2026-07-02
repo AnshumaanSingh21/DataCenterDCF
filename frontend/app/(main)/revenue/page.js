@@ -4,10 +4,11 @@ import { Card } from '@/components/shared/Card';
 import FinancialTable from '@/components/tables/FinancialTable';
 
 const ROWS = [
-  { label: 'Rack Revenue',   key: 'rack_revenue',  format: 'cr' },
-  { label: 'Power Revenue',  key: 'power_revenue', format: 'cr' },
-  { label: 'OTC Revenue',    key: 'otc_revenue',   format: 'cr' },
-  { label: 'Net Revenue',    key: 'net_revenue',   format: 'cr', highlight: true },
+  { label: 'Rack Revenue',          key: 'rack_revenue',          format: 'cr' },
+  { label: 'Power Revenue',         key: 'power_revenue',         format: 'cr' },
+  { label: 'OTC Revenue',           key: 'otc_revenue',           format: 'cr' },
+  { label: 'Cross-Connect Revenue', key: 'cross_connect_revenue', format: 'cr' },
+  { label: 'Net Revenue',           key: 'net_revenue',           format: 'cr', highlight: true },
 ];
 
 export default function RevenuePage() {

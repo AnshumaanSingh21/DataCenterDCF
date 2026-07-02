@@ -229,7 +229,11 @@ def get_default_capex_assumptions():
         # MECHANICAL
         # =====================================================
 
-        "mechanical_cost_per_rack": 0.015,
+        # Cooling infrastructure per rack: CRAC/CRAH + chillers + cooling
+        # towers/condensers + air purifiers, plus rack enclosures. Benchmarked
+        # to CBRE mechanical cost (~₹8L/rack ≈ 13 Cr/MW at 6kW). The prior
+        # 0.015 (₹1.5L) under-costed cooling ~5x vs the CBRE benchmark.
+        "mechanical_cost_per_rack": 0.08,
 
                 # =====================================================
         # NETWORK
@@ -285,6 +289,17 @@ def get_default_capex_assumptions():
         "kvm_switch_cost": 30000,
 
         "network_cable_cost_per_ft": 1000,
+
+        # ---------------------
+        # MEET-ME ROOM / INTERCONNECTION INFRASTRUCTURE
+        # ---------------------
+        # Interconnection fit-out that ENABLES cross-connect revenue: patch /
+        # distribution frames, backbone/riser fibre to the meet-me room, and
+        # carrier cable entry. Incremental to the intra-rack cabling above.
+        # Rs 50,000/rack — midpoint of the US structured-cabling benchmark
+        # (~$500-700/rack interconnection layer), conservative given cheaper
+        # Indian labour. The MMR *space* itself sits in the civil shell.
+        "meet_me_room_cost_per_rack": 50000,
 
         # ---------------------
         # NETWORK CONTINGENCY

@@ -85,8 +85,10 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
     # =====================================================
     # SEATS / WORKSPACE REVENUE
     # =====================================================
-
-    "seats_per_rack": 0.01,
+    # Off by default (conservative), consistent with the other ancillary
+    # streams (managed services, remote hands, etc.) being zeroed. Keeps the
+    # active revenue streams to the four we report: colo, power, OTC, cross-connect.
+    "seats_per_rack": 0.0,
 
     # Rs 10,000/seat/month for dedicated DC workspace (Mumbai 2024).
     "seat_price_per_seat_crore": 0.001,
@@ -138,10 +140,31 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
     # =====================================================
     # CROSS CONNECT REVENUE
     # =====================================================
+    # Interconnection (cross-connect) revenue — near-100% incremental EBITDA
+    # margin (the enabling meet-me-room / patch-frame / backbone infrastructure
+    # is capitalised in network capex; the only recurring cost is trivial
+    # provisioning/maintenance labour, so it is not literally zero).
+    #
+    # Calibration: Equinix (~2 cross-connects/cabinet) is used only as a global
+    # CEILING, not a comparable — it is the world's most interconnection-dense
+    # operator. Indian operators (Yotta, STT, CtrlS, Nxtra) derive a smaller
+    # share of revenue from interconnection, so we calibrate conservatively
+    # below Equinix to reflect lower ecosystem maturity. MRC of Rs 5,000/mo sits
+    # mid-band of the plausible Indian range (~Rs 3,000-8,000; quote-based, not
+    # publicly listed), anchored to the global $100-300/mo adjusted down.
+    #
+    # Cross-connects per occupied rack RAMP with the network effect: as the
+    # facility fills, each tenant has more on-site counterparties to interconnect
+    # with, so density rises. First few operational years at the initial rate,
+    # then a step-up to the mature rate. Both stay well below the Equinix ceiling.
+    "cross_connect_penetration_initial": 1.0,   # XC/rack, first few operational years
+    "cross_connect_penetration_mature":  1.5,   # XC/rack, once the facility matures
+    "cross_connect_ramp_years":          3,     # initial years before the step-up
+    # Fallback flat value if the ramp params above are absent.
+    "cross_connect_penetration": 1.0,
 
-    "cross_connect_penetration": 0.0,
-
-    "cross_connect_fee_per_connection_crore": 0.0,
+    # Monthly recurring charge per cross-connect (Cr) — Rs 5,000/mo.
+    "cross_connect_fee_per_connection_crore": 0.0005,
 
     "cross_connect_escalation": 0.05,
 

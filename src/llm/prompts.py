@@ -58,10 +58,10 @@ _ELECTRICAL_CAPEX_PER_MW = {
     "hyperscale":  (3.0, 5.0),    # Bulk procurement advantage; simpler redundancy design
 }
 _MECHANICAL_CAPEX_PER_MW = {
-    "retail_colo": (2.5, 4.0),    # Chilled water plant + CRAC/CRAH + cooling towers — N+1
-    "wholesale":   (2.0, 3.5),    # Similar cooling infra, slightly less redundancy
-    "ai_hpc":      (4.0, 7.0),    # Liquid/immersion cooling significantly more expensive
-    "hyperscale":  (2.0, 3.5),    # Scale economics; standardised cooling modules
+    "retail_colo": (8.0, 18.0),   # Chilled water plant + CRAC/CRAH + cooling towers — N+1 (CBRE-benchmarked)
+    "wholesale":   (7.0, 16.0),   # Similar cooling infra, slightly less redundancy
+    "ai_hpc":      (12.0, 28.0),  # Liquid/immersion cooling significantly more expensive
+    "hyperscale":  (7.0, 16.0),   # Scale economics; standardised cooling modules
 }
 
 

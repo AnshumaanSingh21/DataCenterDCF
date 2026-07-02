@@ -278,6 +278,11 @@ def write_asmp(wb, P):
     AR['rack_mrc_esc']  = r; inp(r, "Rack MRC escalation",          "% p.a.",      rev_a.get('rack_mrc_escalation', 0.05), FMT_P1); r += 1
     AR['otc_fee']       = r; inp(r, "OTC fee per new rack (Yr 1)",  "Cr/rack",     rev_a.get('otc_fee_crore', 0.0003),    FMT_CR); r += 1
     AR['otc_esc']       = r; inp(r, "OTC fee escalation",           "% p.a.",      0.05,     FMT_P1); r += 1
+    AR['xc_pen_init']   = r; inp(r, "Cross-connects/rack (initial)","XC/rack",     rev_a.get('cross_connect_penetration_initial', 1.0),       FMT_CR); r += 1
+    AR['xc_pen_mat']    = r; inp(r, "Cross-connects/rack (mature)", "XC/rack",     rev_a.get('cross_connect_penetration_mature', 1.5),        FMT_CR); r += 1
+    AR['xc_ramp']       = r; inp(r, "Cross-connect ramp years",     "yrs",         rev_a.get('cross_connect_ramp_years', 3),                  FMT_INT); r += 1
+    AR['xc_fee']        = r; inp(r, "Cross-connect MRC (Yr 1)",     "Cr/XC/mo",    rev_a.get('cross_connect_fee_per_connection_crore', 0.0),  FMT_CR); r += 1
+    AR['xc_esc']        = r; inp(r, "Cross-connect escalation",     "% p.a.",      rev_a.get('cross_connect_escalation', 0.05),               FMT_P1); r += 1
     AR['util_tariff']   = r; inp(r, "Grid tariff (Year 1)",         "Rs/kWh",      rev_a['utility_tariff_rs_per_kwh'],    FMT_CR, src=True); r += 1
     AR['pwr_markup']    = r; inp(r, "Power markup",                 "Rs/kWh",      rev_a['power_markup_rs_per_kwh'],      FMT_CR, src=True); r += 1
     AR['tenant_tariff'] = r
@@ -356,8 +361,9 @@ def write_asmp(wb, P):
 
     # ── VALUATION ─────────────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "VALUATION"); r += 1
-    AR['cost_eq']    = r; inp(r, "Cost of equity",               "% p.a.",   0.18, FMT_P2); r += 1
-    AR['ev_mult']    = r; inp(r, "Terminal EV/EBITDA multiple",  "x",        12.0, FMT_MX); r += 1
+    AR['cost_eq']    = r; inp(r, "Cost of equity",               "% p.a.",   val_a.get('cost_of_equity', 0.15),              FMT_P2); r += 1
+    AR['term_g']     = r; inp(r, "Terminal growth rate (Gordon)","% p.a.",   val_a.get('terminal_growth_rate', 0.04),        FMT_P2); r += 1
+    AR['ev_mult']    = r; inp(r, "Terminal EV/EBITDA multiple",  "x",        val_a.get('terminal_ev_ebitda_multiple', 12.0), FMT_MX); r += 1
 
     _col_widths(ws)
     ws.row_dimensions[3].height = 18
@@ -471,6 +477,21 @@ def write_rev(wb):
         f(r, j, f"={_asmp('otc_fee')}*(1+{_asmp('otc_esc')})^({cl(j)}4-1)", FMT_CR)
     r += 1
 
+    REV_R['xc_esc'] = r
+    _lbl(ws, r, "Cross-connect MRC (escalated)", "Cr/XC/mo")
+    for j in range(N):
+        f(r, j, f"={_asmp('xc_fee')}*(1+{_asmp('xc_esc')})^({cl(j)}4-1)", FMT_CR)
+    r += 1
+
+    # Penetration ramp: initial rate for the first `ramp` operational years, then
+    # mature. Row 4 holds the 1-based year index (construction = 1), so the engine's
+    # 0-based (i <= ramp) becomes (index <= ramp+1) here.
+    REV_R['xc_pen'] = r
+    _lbl(ws, r, "Cross-connects per rack (ramp)", "XC/rack")
+    for j in range(N):
+        f(r, j, f"=IF({cl(j)}4<={_asmp('xc_ramp')}+1,{_asmp('xc_pen_init')},{_asmp('xc_pen_mat')})", FMT_CR)
+    r += 1
+
     REV_R['tenant_esc'] = r
     _lbl(ws, r, "Tenant power tariff (escalated)", "Rs/kWh")
     for j in range(N):
@@ -504,11 +525,17 @@ def write_rev(wb):
         f(r, j, f"=SIZE!{cl(j)}{SIZE_R['fac_load']}*REV!{cl(j)}{REV_R['tenant_esc']}*8760/10000000", FMT_CR)
     r += 1
 
+    REV_R['xc'] = r
+    _lbl(ws, r, "Cross-connect revenue", "Cr")
+    for j in range(N):
+        f(r, j, f"=SIZE!{cl(j)}{occ}*REV!{cl(j)}{REV_R['xc_pen']}*REV!{cl(j)}{REV_R['xc_esc']}*12", FMT_CR)
+    r += 1
+
     r += 1  # blank
     REV_R['gross'] = r
     _lbl(ws, r, "Gross revenue", "Cr", bold=True)
     for j in range(N):
-        f(r, j, f"=REV!{cl(j)}{REV_R['colo']}+REV!{cl(j)}{REV_R['otc']}+REV!{cl(j)}{REV_R['power']}", FMT_CR, bold=True, fill=LTGREY)
+        f(r, j, f"=REV!{cl(j)}{REV_R['colo']}+REV!{cl(j)}{REV_R['otc']}+REV!{cl(j)}{REV_R['power']}+REV!{cl(j)}{REV_R['xc']}", FMT_CR, bold=True, fill=LTGREY)
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, bold=True, fill=LTGREY)
     r += 1
 
@@ -1245,6 +1272,113 @@ def write_cfs(wb):
         c.value = formula; c.number_format = fmt; c.font = _font(bold=bold)
         if fill: c.fill = _fill(fill)
 
+    def tot(row):
+        _w(ws, row, COL_YR0+N, f"=SUM({cl(0)}{row}:{cl(N-1)}{row})", FMT_CR)
+
+    # ── Statement of cash flows (CFO / CFI / CFF) ────────────────────────────
+    # Formal indirect-method statement. This is the single source of the
+    # CFO/CFI/CFF split — the balance-sheet cash roll-forward references these
+    # rows, so the two statements can never disagree. Closing cash here is what
+    # feeds "Cash & equivalents" on the balance sheet.
+    r += 1; _hdr(ws, r, "STATEMENT OF CASH FLOWS"); r += 1
+
+    _subhdr(ws, r, "Operating activities"); r += 1
+
+    CFS_R['spat'] = r
+    _lbl(ws, r, "Profit after tax (PAT)", "Cr")
+    for j in range(N): f(r, j, f"=PNL!{cl(j)}{PNL_R['pat']}")
+    tot(r); r += 1
+
+    CFS_R['sdep'] = r
+    _lbl(ws, r, "Add: depreciation (non-cash)", "Cr")
+    for j in range(N): f(r, j, f"=DEPR!{cl(j)}{DEP_R['total']}")
+    tot(r); r += 1
+
+    CFS_R['swc'] = r
+    _lbl(ws, r, "Less: increase in working capital", "Cr")
+    for j in range(N): f(r, j, f"=-WC!{cl(j)}{WC_R['delta']}")
+    tot(r); r += 1
+
+    CFS_R['cfo'] = r
+    _lbl(ws, r, "Cash flow from operations (CFO)", "Cr", bold=True, fill=LTGREY)
+    for j in range(N):
+        f(r, j, f"=CFS!{cl(j)}{CFS_R['spat']}+CFS!{cl(j)}{CFS_R['sdep']}"
+                f"+CFS!{cl(j)}{CFS_R['swc']}", FMT_CR, True, LTGREY)
+        ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
+    _w(ws, r, COL_YR0+N, f"=SUM({cl(0)}{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY, bdr=True); r += 2
+
+    _subhdr(ws, r, "Investing activities"); r += 1
+
+    CFS_R['scapex'] = r
+    _lbl(ws, r, "Less: capital expenditure", "Cr")
+    for j in range(N): f(r, j, f"=-CAPEX!{cl(j)}{CAP_R['total']}")
+    tot(r); r += 1
+
+    CFS_R['cfi'] = r
+    _lbl(ws, r, "Cash flow from investing (CFI)", "Cr", bold=True, fill=LTGREY)
+    for j in range(N):
+        f(r, j, f"=CFS!{cl(j)}{CFS_R['scapex']}", FMT_CR, True, LTGREY)
+        ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
+    _w(ws, r, COL_YR0+N, f"=SUM({cl(0)}{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY, bdr=True); r += 2
+
+    _subhdr(ws, r, "Financing activities"); r += 1
+
+    CFS_R['sdraw'] = r
+    _lbl(ws, r, "Add: debt drawdown", "Cr")
+    for j in range(N): f(r, j, f"=DEBT!{cl(j)}{DBT_R['drawdown']}")
+    tot(r); r += 1
+
+    CFS_R['sprin'] = r
+    _lbl(ws, r, "Less: principal repayment", "Cr")
+    for j in range(N): f(r, j, f"=-DEBT!{cl(j)}{DBT_R['principal']}")
+    tot(r); r += 1
+
+    CFS_R['seq'] = r
+    _lbl(ws, r, "Add: equity injection", "Cr")
+    for j in range(N): f(r, j, f"=DEBT!{cl(j)}{DBT_R['equity']}")
+    tot(r); r += 1
+
+    CFS_R['cff'] = r
+    _lbl(ws, r, "Cash flow from financing (CFF)", "Cr", bold=True, fill=LTGREY)
+    for j in range(N):
+        f(r, j, f"=CFS!{cl(j)}{CFS_R['sdraw']}+CFS!{cl(j)}{CFS_R['sprin']}"
+                f"+CFS!{cl(j)}{CFS_R['seq']}", FMT_CR, True, LTGREY)
+        ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
+    _w(ws, r, COL_YR0+N, f"=SUM({cl(0)}{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY, bdr=True); r += 2
+
+    # Net change + cash roll-forward (closing cash feeds the balance sheet).
+    # Row numbers pre-assigned so Opening cash can reference the prior year's
+    # Closing cash and Closing cash can reference the same year's Opening cash.
+    CFS_R['net_change'] = r
+    CFS_R['open_cash']  = r + 1
+    CFS_R['cash_raw']   = r + 2
+    CFS_R['close_cash'] = r + 3
+
+    rn = CFS_R['net_change']
+    _lbl(ws, rn, "Net change in cash", "Cr", bold=True)
+    for j in range(N):
+        f(rn, j, f"=CFS!{cl(j)}{CFS_R['cfo']}+CFS!{cl(j)}{CFS_R['cfi']}"
+                 f"+CFS!{cl(j)}{CFS_R['cff']}", FMT_CR, True)
+    _w(ws, rn, COL_YR0+N, f"=SUM({cl(0)}{rn}:{cl(N-1)}{rn})", FMT_CR, True)
+
+    ro = CFS_R['open_cash']
+    _lbl(ws, ro, "Opening cash", "Cr")
+    for j in range(N):
+        if j == 0: f(ro, j, "=0")
+        else:      f(ro, j, f"=CFS!{cl(j-1)}{CFS_R['cash_raw']}")
+
+    rw = CFS_R['cash_raw']
+    _lbl(ws, rw, "Closing cash (before financing gap)", "Cr", bold=True)
+    for j in range(N):
+        f(rw, j, f"=CFS!{cl(j)}{CFS_R['open_cash']}+CFS!{cl(j)}{CFS_R['net_change']}", FMT_CR, True)
+
+    rc = CFS_R['close_cash']
+    _lbl(ws, rc, "Closing cash (per balance sheet)", "Cr", bold=True, fill=LTGREY)
+    for j in range(N):
+        f(rc, j, f"=MAX(CFS!{cl(j)}{CFS_R['cash_raw']},0)", FMT_CR, True, LTGREY)
+        ws.cell(row=rc, column=COL_YR0+j).border = _bdr(True, True)
+    r = rc + 2
+
     r += 1; _hdr(ws, r, "PROJECT FREE CASH FLOW (FCFF)"); r += 1
 
     # Unlevered loss pool — so NOPAT in a loss year flows through in full
@@ -1383,35 +1517,33 @@ def write_bs(wb):
         c.value = formula; c.number_format = fmt; c.font = _font(bold=bold)
         if fill: c.fill = _fill(fill)
 
-    # ── CASH ROLL-FORWARD (needed for cash & the financing gap) ──────────────
-    r += 1; _hdr(ws, r, "CASH FLOW (roll-forward)"); r += 1
+    # ── CASH (references the Statement of Cash Flows — single source) ────────
+    # CFO/CFI/CFF and the cash roll-forward live on the CFS sheet; the balance
+    # sheet pulls the same figures so the statements can never diverge.
+    r += 1; _hdr(ws, r, "CASH (from cash flow statement)"); r += 1
 
     BS_R['cfo'] = r
-    _lbl(ws, r, "Operating cash flow (PAT + Dep − ΔWC)", "Cr")
+    _lbl(ws, r, "Operating cash flow (CFO)", "Cr")
     for j in range(N):
-        f(r, j, f"=PNL!{cl(j)}{PNL_R['pat']}+DEPR!{cl(j)}{DEP_R['total']}-WC!{cl(j)}{WC_R['delta']}")
+        f(r, j, f"=CFS!{cl(j)}{CFS_R['cfo']}")
     r += 1
 
     BS_R['cfi'] = r
-    _lbl(ws, r, "Investing cash flow (− CapEx)", "Cr")
+    _lbl(ws, r, "Investing cash flow (CFI)", "Cr")
     for j in range(N):
-        f(r, j, f"=-CAPEX!{cl(j)}{CAP_R['total']}")
+        f(r, j, f"=CFS!{cl(j)}{CFS_R['cfi']}")
     r += 1
 
     BS_R['cff'] = r
-    _lbl(ws, r, "Financing cash flow (Draw − Principal + Equity)", "Cr")
+    _lbl(ws, r, "Financing cash flow (CFF)", "Cr")
     for j in range(N):
-        f(r, j, f"=DEBT!{cl(j)}{DBT_R['drawdown']}-DEBT!{cl(j)}{DBT_R['principal']}+DEBT!{cl(j)}{DBT_R['equity']}")
+        f(r, j, f"=CFS!{cl(j)}{CFS_R['cff']}")
     r += 1
 
     BS_R['cash_raw'] = r
     _lbl(ws, r, "Cash before financing gap (cumulative)", "Cr")
     for j in range(N):
-        chg = f"BS!{cl(j)}{BS_R['cfo']}+BS!{cl(j)}{BS_R['cfi']}+BS!{cl(j)}{BS_R['cff']}"
-        if j == 0:
-            f(r, j, f"={chg}")
-        else:
-            f(r, j, f"=BS!{cl(j-1)}{BS_R['cash_raw']}+{chg}")
+        f(r, j, f"=CFS!{cl(j)}{CFS_R['cash_raw']}")
     r += 1
 
     # ── ASSETS ───────────────────────────────────────────────────────────────
@@ -1521,6 +1653,8 @@ def write_val(wb):
 
     LC = cl(N - 1)  # dynamic last data column — handles any horizon, not just 10
 
+    method = _A("val", get_default_valuation_assumptions).get("valuation_method", "gordon_growth")
+
     # ── WACC ──────────────────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "WACC BUILD"); r += 1
     VAL_R['coe']       = r; fsc(r, f"={_asmp('cost_eq')}",  "Cost of equity",     "% p.a.", FMT_P2); r += 1
@@ -1535,11 +1669,22 @@ def write_val(wb):
         "WACC", "% p.a.", FMT_P2, True); r += 2
 
     # ── Terminal value ────────────────────────────────────────────────────
+    # Method-aware: Gordon Growth (long-term hold) is the base case; exit
+    # multiple is retained as a cross-check. Matches the engine's branch.
     _hdr(ws, r, "TERMINAL VALUE"); r += 1
-    VAL_R['mult']      = r; fsc(r, f"={_asmp('ev_mult')}", "EV/EBITDA multiple",  "x", FMT_MX); r += 1
-    VAL_R['ebitda10']  = r; fsc(r, f"=OPEX!{LC}{OPX_R['ebitda']}", "EBITDA (final year)", "Cr"); r += 1
-    VAL_R['tv']        = r
-    fsc(r, f"=VAL!$C${VAL_R['mult']}*VAL!$C${VAL_R['ebitda10']}", "Terminal EV", "Cr", FMT_CR, True); r += 1
+    if method == "gordon_growth":
+        VAL_R['term_g']   = r; fsc(r, f"={_asmp('term_g')}", "Terminal growth rate (g)", "% p.a.", FMT_P2); r += 1
+        VAL_R['fcff_fin'] = r; fsc(r, f"=CFS!{LC}{CFS_R['fcff']}", "FCFF (final year)", "Cr"); r += 1
+        VAL_R['tv']       = r
+        fsc(r, f"=VAL!$C${VAL_R['fcff_fin']}*(1+VAL!$C${VAL_R['term_g']})"
+               f"/(VAL!$C${VAL_R['wacc']}-VAL!$C${VAL_R['term_g']})",
+            "Terminal EV (Gordon growth)", "Cr", FMT_CR, True); r += 1
+    else:
+        VAL_R['mult']     = r; fsc(r, f"={_asmp('ev_mult')}", "EV/EBITDA multiple", "x", FMT_MX); r += 1
+        VAL_R['ebitda10'] = r; fsc(r, f"=OPEX!{LC}{OPX_R['ebitda']}", "EBITDA (final year)", "Cr"); r += 1
+        VAL_R['tv']       = r
+        fsc(r, f"=VAL!$C${VAL_R['mult']}*VAL!$C${VAL_R['ebitda10']}",
+            "Terminal EV (exit multiple)", "Cr", FMT_CR, True); r += 1
     VAL_R['res_debt']  = r; fsc(r, f"=DEBT!{LC}{DBT_R['closing']}", "Residual debt (final year)", "Cr"); r += 1
     VAL_R['eq_tv']     = r
     fsc(r, f"=MAX(VAL!$C${VAL_R['tv']}-VAL!$C${VAL_R['res_debt']},0)",

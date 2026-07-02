@@ -115,10 +115,19 @@ def test_construction_year_is_clean():
 def test_base_case_metrics_within_tolerance():
     cf = run_model(BASE)["cf"]
     v = cf["valuation"]
-    assert abs(v["npv"] - 124.8) < 2.0,                f"NPV drifted: {v['npv']}"
-    assert abs(v["project_irr"] - 0.185) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
-    assert abs(v["equity_irr"] - 0.216) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
-    assert abs(cf["equity"]["moic"] - 4.74) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
+    # Baselines re-based after four evidence-based corrections:
+    #  (1) mechanical/cooling capex 0.015 -> 0.08 Cr/rack (CBRE-benchmarked)
+    #  (2) cross-connect revenue turned on, penetration ramps 1.0 -> 1.5 XC/rack
+    #      after 3 operational years (network effect); Rs 5k/mo MRC. ~5.6% of rev.
+    #  (3) cost of equity 18% -> 15% (CAPM-derived). WACC 12.75% -> 11.25%.
+    #  (4) terminal value method -> Gordon Growth g=4% (long-term hold thesis),
+    #      replacing the 12x exit multiple. TV = FCFF_final x (1+g)/(WACC-g).
+    #  (5) meet-me room / interconnection fit-out added to network capex
+    #      (Rs 50k/rack) — the CapEx that enables cross-connect revenue.
+    assert abs(v["npv"] - 119.7) < 2.0,                f"NPV drifted: {v['npv']}"
+    assert abs(v["project_irr"] - 0.159) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
+    assert abs(v["equity_irr"] - 0.182) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
+    assert abs(cf["equity"]["moic"] - 3.54) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
 
 
 def test_dscr_profile_shape():

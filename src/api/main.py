@@ -292,6 +292,7 @@ def run_model(req: RunRequest):
     rack_rev    = rev["revenue_streams"].get("recurring_colo_revenue", [0]*len(years))
     pwr_rev     = rev["revenue_streams"].get("power_revenue", [0]*len(years))
     otc_rev     = rev["revenue_streams"].get("otc_setup_revenue", [0]*len(years))
+    xc_rev      = rev["revenue_streams"].get("cross_connect_revenue", [0]*len(years))
 
     ebitda      = opx["financials"]["ebitda"]
     ebitda_m    = opx["financials"]["ebitda_margin"]
@@ -335,10 +336,11 @@ def run_model(req: RunRequest):
             "equity_invested":  _fmt(eq["total_equity_invested"]),
         },
         "revenue": {
-            "net_revenue":   _row(net_rev),
-            "rack_revenue":  _row(rack_rev),
-            "power_revenue": _row(pwr_rev),
-            "otc_revenue":   _row(otc_rev),
+            "net_revenue":            _row(net_rev),
+            "rack_revenue":           _row(rack_rev),
+            "power_revenue":          _row(pwr_rev),
+            "otc_revenue":            _row(otc_rev),
+            "cross_connect_revenue":  _row(xc_rev),
         },
         "capex": {
             "total_capex":  _row(total_cx),
