@@ -127,10 +127,14 @@ def test_base_case_metrics_within_tolerance():
     #  (6) electrical unit prices market-corrected: UPS ~Rs 90L/frame and DG
     #      ~Rs 3 Cr/unit (both were ~2x low), transformer Rs 45L (was high).
     #      Electrical capex 0.069 -> 0.103 Cr/rack, aligning with CBRE sample.
-    assert abs(v["npv"] - 84.6) < 2.0,                 f"NPV drifted: {v['npv']}"
-    assert abs(v["project_irr"] - 0.144) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
-    assert abs(v["equity_irr"] - 0.162) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
-    assert abs(cf["equity"]["moic"] - 3.02) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
+    #  (7) power inputs anchored to public data: grid tariff -> HT INDUSTRIAL band
+    #      (DCs reclassified as industrial; was commercial 8.5-9.5), power markup
+    #      trimmed 1.5 -> 1.25 Rs/kWh (retail colo range). Tariff is ~pass-through;
+    #      the markup trim lowers NPV.
+    assert abs(v["npv"] - 69.6) < 2.0,                 f"NPV drifted: {v['npv']}"
+    assert abs(v["project_irr"] - 0.139) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
+    assert abs(v["equity_irr"] - 0.154) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
+    assert abs(cf["equity"]["moic"] - 2.86) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
 
 
 def test_dscr_profile_shape():
@@ -138,7 +142,7 @@ def test_dscr_profile_shape():
     dscr = [d for d in cf["cashflows"]["dscr"] if d is not None]
     # Greenfield shape: ramps up, ends well above covenant
     assert dscr[1] < 0.5            # early lease-up year is weak
-    assert dscr[-1] > 2.0           # stabilized years comfortably covered
+    assert dscr[-1] > 1.8          # stabilized years well above the 1.25 covenant
     # non-construction DSCR should be non-decreasing in the back half
     assert dscr[-1] >= dscr[-3]
 

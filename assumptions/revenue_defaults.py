@@ -72,9 +72,9 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
 
     "utility_tariff_rs_per_kwh": 8.0,
 
-    "tenant_power_rate_rs_per_kwh": 9.5,
+    "tenant_power_rate_rs_per_kwh": 9.25,
 
-    "power_markup_rs_per_kwh": 1.5,
+    "power_markup_rs_per_kwh": 1.25,
 
     "power_tariff_escalation": 0.05,
 

@@ -74,11 +74,11 @@ class RunRequest(BaseModel):
 # Location-label aliases (frontend label -> anchor-table key)
 _LOC_ALIAS       = {"Delhi": "Delhi NCR"}
 _FACILITY_PUE    = {"retail_colo": 1.6, "wholesale": 1.55, "ai_hpc": 1.4, "hyperscale": 1.55}
-_FACILITY_MARKUP = {"retail_colo": 1.5, "wholesale": 0.75, "ai_hpc": 1.5, "hyperscale": 0.75}
+_FACILITY_MARKUP = {"retail_colo": 1.25, "wholesale": 0.75, "ai_hpc": 1.5, "hyperscale": 0.75}
 
 
-def _band_mid(band: str, default: float = 8.5) -> float:
-    """Midpoint of a tariff band string like '8.5–9.5' (handles en/em dashes)."""
+def _band_mid(band: str, default: float = 8.3) -> float:
+    """Midpoint of a tariff band string like '8.0–8.6' (handles en/em dashes)."""
     try:
         parts = band.replace("–", "-").replace("—", "-").split("-")
         return round((float(parts[0]) + float(parts[1])) / 2, 2)
@@ -94,7 +94,7 @@ def _heuristic_market_overrides(location: str, facility_type: str, kw_per_rack: 
     lo, hi     = _CITY_MRC_RANGE.get(loc, (30_000, 1_50_000))
     mult       = _FACILITY_MRC_MULTIPLIER.get(facility_type, 1.0)
     rack_crore = round((lo + hi) / 2 * mult / 1e7, 6)
-    tariff     = _band_mid(_CITY_DISCOM.get(loc, (None, None, None, "8.5-9.5"))[3])
+    tariff     = _band_mid(_CITY_DISCOM.get(loc, (None, None, None, "8.0-8.6"))[3])
     markup     = _FACILITY_MARKUP.get(facility_type, 1.5)
     pue        = _FACILITY_PUE.get(facility_type, 1.6)
     land       = LOCATION_LAND_COST.get(loc, 5000)

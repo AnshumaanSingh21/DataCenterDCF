@@ -6,8 +6,8 @@ from src.extraction.assumption_schema import (
 # City → State → DISCOM mapping for power tariff grounding
 # ---------------------------------------------------------------------------
 _CITY_DISCOM = {
-    "Mumbai":    ("Maharashtra", "MSEDCL", "MERC Tariff Order 2024",       "8.5–9.5"),
-    "Pune":      ("Maharashtra", "MSEDCL", "MERC Tariff Order 2024",       "8.5–9.5"),
+    "Mumbai":    ("Maharashtra", "MSEDCL", "MERC Tariff Order 2024",       "8.0–8.6"),
+    "Pune":      ("Maharashtra", "MSEDCL", "MERC Tariff Order 2024",       "8.0–8.6"),
     "Bangalore": ("Karnataka",   "BESCOM", "KERC Tariff Order 2025-26",    "7.8–8.6"),
     "Delhi NCR": ("Delhi",       "BSES/Tata Power", "DERC Order 2025",     "8.2–9.0"),
     "Hyderabad": ("Telangana",   "TSSPDCL", "TGERC Tariff Order 2025-26", "7.2–7.9"),
@@ -84,13 +84,13 @@ def build_market_intelligence_prompt(
         state, discom, tariff_order, tariff_range = discom_info
         power_tariff_block = (
             f"- Location maps to: {state} → {discom} ({tariff_order})\n"
-            f"- Published HT commercial rate: ₹{tariff_range}/kWh (blended annual average, 24/7 steady-state load)\n"
+            f"- Published HT industrial rate: ₹{tariff_range}/kWh (data centers are classified as INDUSTRIAL consumers, not commercial; blended annual average, 24/7 steady-state load)\n"
             f"- Source: State Electricity Regulatory Commission tariff order (publicly available on {discom} website)\n"
             f"- Note: Use annual blended rate, not peak/off-peak. Data centers run 24/7 steady-state."
         )
     else:
         power_tariff_block = (
-            "- No specific DISCOM mapping for this location. Use national HT commercial average.\n"
+            "- No specific DISCOM mapping for this location. Use national HT industrial average (data centers are industrial consumers).\n"
             "- Reference ranges: Maharashtra ₹8.5–9.5, Karnataka ₹7.8–8.6, Delhi ₹8.2–9.0, Telangana ₹7.2–7.9, Tamil Nadu ₹8.4–9.1\n"
             "- Return medium confidence if location does not match any of the above."
         )
@@ -191,8 +191,8 @@ your evidence supports it (and say so).
 {power_tariff_block}
 
 --- TENANT POWER MARKUP (above utility rate, Rs/kWh) ---
-- Indian DC operators (Sify, CtrlS, STT GDC) charge tenants 15–25% above utility rate
-- Retail colo standard: ₹1.0–2.0/kWh (covers distribution losses, metering, billing overhead, margin)
+- Indian DC operators (Sify, CtrlS, STT GDC) charge tenants 10–18% above utility rate
+- Retail colo standard: ₹1.0–1.5/kWh (covers distribution losses, metering, billing overhead, margin)
 - Wholesale/hyperscale: ₹0.5–1.0/kWh (thin margin, high volume)
 - Source: Kotak / Motilal Oswal equity research on Indian DC operators (2025)
 - Derivation rule:
