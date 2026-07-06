@@ -80,11 +80,10 @@ FIELD_MAP = {
             ("capex", "civil_cost_per_rack",          _identity),
         ],
     },
-    "electrical_capex_cr_per_mw": {
-        "engines": [
-            ("capex", "electrical_cost_per_rack",     _per_mw_to_rack),
-        ],
-    },
+    # NOTE: electrical is intentionally NOT sourced from the LLM. The CapEx
+    # engine computes electrical bottom-up from the electrical sizing engine
+    # (equipment unit costs), so any LLM electrical value would be ignored.
+    # Mapping it here created a dead write + a misleading audit-trail entry.
     "mechanical_capex_cr_per_mw": {
         "engines": [
             ("capex", "mechanical_cost_per_rack",     _per_mw_to_rack),

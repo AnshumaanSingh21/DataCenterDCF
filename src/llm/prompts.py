@@ -254,27 +254,6 @@ Implied civil_cost_cr_per_rack range: ₹{civil_cost_low} Cr – ₹{civil_cost_
 Derive a single point estimate. Prefer the midpoint unless {location} has specific cost pressures.
 If confidence is medium or high, show the arithmetic explicitly in reasoning.
 
---- ELECTRICAL CAPEX PER MW (equipment only: UPS, batteries, DG, transformers, switchgear, cabling) ---
-This is total electrical infrastructure cost per MW of IT load. Does NOT include civil, land,
-mechanical cooling, or IT hardware.
-
-Redundancy tier: Tier III N+1 (assume this unless facility_type overrides it).
-- AI/HPC may require 2N for electrical: increase estimate by 25–40%.
-
-Anchor data (JM Financial Data Centre 101, March 2025; CBRE India DC Cost Benchmarks 2024):
-- Retail colo / Wholesale (N+1): ₹{elec_range[0]}–₹{elec_range[1]} Cr/MW IT load
-  Components: HT panel + transformers (~15%), UPS systems (~25%), battery banks (~20%),
-  DG gensets (~20%), PDUs + cabling + earthing (~20%)
-- AI/HPC (higher power density, 2N considered): ₹5.0–₹8.0 Cr/MW
-  Additional cost: oversized UPS frames, larger DG capacity, denser cabling infrastructure
-- Note: Per MW costs decline slightly at scale (bulk procurement savings ~8–12% above 5MW)
-  For {total_mw} MW facility: apply {'-8 to -12% scale discount' if total_mw > 5 else 'no scale discount (sub-5MW)'}
-
-Derivation rule:
-  electrical_capex_cr_per_mw = total electrical equipment cost / IT load in MW
-  Do NOT include civil or mechanical costs in this figure.
-  Cross-check: electrical should be 35–45% of total construction CapEx (excl. land, soft costs)
-
 --- MECHANICAL CAPEX PER MW (cooling: chilled water plant, CRAC/CRAH, cooling towers, piping) ---
 This is total mechanical cooling infrastructure per MW of IT load. Does NOT include civil, land,
 electrical, or IT hardware.
@@ -321,7 +300,6 @@ Return null (not a guess) if value falls outside these bounds:
 - pue                            : 1.2 – 2.2
 - interest_rate_pct              : 7.0 – 15.0
 - civil_cost_cr_per_rack         : {civil_cost_low} – {civil_cost_high}
-- electrical_capex_cr_per_mw     : {elec_range[0]} – {elec_range[1]}
 - mechanical_capex_cr_per_mw     : {mech_range[0]} – {mech_range[1]}
 
 === OUTPUT FORMAT ===
@@ -360,11 +338,6 @@ Return ONLY valid JSON. No prose, no markdown outside the JSON.
   }},
   "civil_cost_cr_per_rack": {{
     "reasoning": "<construction cost Rs/sqft for {location}> × <{effective_sqft_per_rack:.0f} sqft/rack> / 1,00,00,000 = <value> Cr/rack",
-    "value": <number or null>,
-    "confidence": "..."
-  }},
-  "electrical_capex_cr_per_mw": {{
-    "reasoning": "<component breakdown: UPS + batteries + DG + transformers + switchgear + cabling> → <total per MW>",
     "value": <number or null>,
     "confidence": "..."
   }},
