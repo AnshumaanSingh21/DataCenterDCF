@@ -140,10 +140,15 @@ def test_base_case_metrics_within_tolerance():
     #  (9) differentiated escalation: power 5% -> 4% (declining Indian tariffs),
     #      colo & cross-connect stay 5%. Unfreezes the revenue mix; power share
     #      declines over the horizon. Small NPV impact (power ~pass-through).
-    assert abs(v["npv"] - 75.2) < 2.0,                 f"NPV drifted: {v['npv']}"
-    assert abs(v["project_irr"] - 0.138) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
-    assert abs(v["equity_irr"] - 0.153) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
-    assert abs(cf["equity"]["moic"] - 3.24) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
+    # (10) AMC OEM-warranty deferral: new MEP (elec/mech/net/soft) carries a 1-yr
+    #      manufacturer warranty, so no AMC opex accrues on it for the first
+    #      operating year (civil O&M still from day one). Flips the first
+    #      operating year EBITDA from ~-0.7 to +5.8 (no more negative operating
+    #      year); genuinely avoided cost, so NPV rises 75.2 -> 84.2.
+    assert abs(v["npv"] - 84.2) < 2.0,                 f"NPV drifted: {v['npv']}"
+    assert abs(v["project_irr"] - 0.142) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
+    assert abs(v["equity_irr"] - 0.158) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
+    assert abs(cf["equity"]["moic"] - 3.39) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
 
 
 def test_dscr_profile_shape():

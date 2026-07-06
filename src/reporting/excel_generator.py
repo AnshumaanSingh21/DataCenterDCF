@@ -35,6 +35,11 @@ USER_INPUTS = {
 _DEFAULT_USER_INPUTS = dict(USER_INPUTS)  # immutable snapshot for reset
 N = USER_INPUTS["projection_years"]
 YEARS = list(range(USER_INPUTS["start_year"], USER_INPUTS["start_year"] + N))
+# AMC OEM-warranty deferral (operating years of no MEP AMC) and construction
+# period — set per-run in generate() from the opex assumptions. Baked into the
+# AMC formula as a static column shift so Excel↔engine parity holds.
+_MW_AMC = 0
+_CY_YEARS = 1
 
 # When the workbook is generated for a specific user run, generate() injects
 # the run's inputs + assumption dicts here so the Excel matches the dashboard
@@ -328,8 +333,9 @@ def write_asmp(wb, P):
     AR['gna_pct']    = r; inp(r, "G&A (% of net revenue)",       "%",        0.03,          FMT_P2); r += 1
     AR['mkt_pct_start']  = r; inp(r, "Marketing — Year 1 (% of net revenue)",  "%", 0.01,   FMT_P2); r += 1
     AR['mkt_pct_end']    = r; inp(r, "Marketing — Year 10 (% of net revenue)", "%", 0.0025, FMT_P2); r += 1
-    AR['maint_cx']           = r; inp(r, "Maintenance CapEx rate (% of MEP)",       "%", 0.015,  FMT_P2);  r += 1
-    AR['maint_warranty']     = r; inp(r, "OEM warranty period",                    "yrs", 3,     FMT_INT); r += 1
+    AR['maint_cx']           = r; inp(r, "Replacement CapEx rate (% of MEP)",       "%", 0.015,  FMT_P2);  r += 1
+    AR['maint_warranty']     = r; inp(r, "Replacement CapEx — OEM warranty",       "yrs", 3,     FMT_INT); r += 1
+    AR['amc_warranty']       = r; inp(r, "AMC — OEM warranty (no MEP AMC)",        "yrs", opx_a.get('maint_warranty_years', 0), FMT_INT); r += 1
     AR['construction_years'] = r; inp(r, "Construction period",                    "yrs", 1,     FMT_INT); r += 1
 
     # ── DEPRECIATION ──────────────────────────────────────────────────────
@@ -685,12 +691,12 @@ def write_capex(wb):
         r += 1
 
     r += 1
-    # ── Maintenance CapEx — M&E base (electrical + mechanical), 3-yr OEM warranty ──
-    # Base is the maintainable M&E plant only (matches engine); each phase becomes
+    # ── Replacement CapEx — M&E base (electrical + mechanical), 3-yr OEM warranty ──
+    # Base is the replaceable M&E plant only (matches engine); each phase becomes
     # eligible maint_warranty years after commissioning. Period is 1-based (row 4),
     # so the threshold is MAX(deploy_idx, construction_years) + warranty + 1.
     CAP_R['maint'] = r
-    _lbl(ws, r, "Maintenance CapEx (M&E base, post-OEM warranty)", "Cr")
+    _lbl(ws, r, "Replacement CapEx (M&E base, post-OEM warranty)", "Cr")
     for j in range(N):
         eligible_terms = "+".join(
             f"IF({cl(j)}4>=MAX({DEPLOY_XIDX[p]-1},{_asmp('construction_years')})+{_asmp('maint_warranty')}+1,"
@@ -762,13 +768,25 @@ def write_opex(wb):
 
     OPX_R['amc'] = r
     _lbl(ws, r, "Maintenance (AMC, asset-based)", "Cr")
+    # Civil (building O&M) is charged from commissioning on the current cumulative.
+    # MEP (elec/mech/net/soft) is under OEM warranty for `_MW_AMC` operating years,
+    # so its AMC is charged on the cumulative that was already deployed `_MW_AMC`
+    # years ago — a static column shift (cl(j-_MW_AMC)) that mirrors the engine's
+    # `cumulative_*[i - maint_warranty_years]`. MEP only accrues once that lagged
+    # column is itself an operating year (j-_MW_AMC >= construction period).
     for j in range(N):
         c = cl(j)
-        f(r, j, f"=IF({cy_gate(j)},{_asmp('amc_civil')}*CAPEX!{c}{CAP_R['civil_c']}"
-                f"+{_asmp('amc_elec')}*CAPEX!{c}{CAP_R['elec_c']}"
-                f"+{_asmp('amc_mech')}*CAPEX!{c}{CAP_R['mech_c']}"
-                f"+{_asmp('amc_net')}*CAPEX!{c}{CAP_R['net_c']}"
-                f"+{_asmp('amc_soft')}*CAPEX!{c}{CAP_R['soft_c']},0)")
+        civil = f"{_asmp('amc_civil')}*CAPEX!{c}{CAP_R['civil_c']}"
+        jw = j - _MW_AMC
+        if jw >= _CY_YEARS:
+            cw = cl(jw)
+            mep = (f"+{_asmp('amc_elec')}*CAPEX!{cw}{CAP_R['elec_c']}"
+                   f"+{_asmp('amc_mech')}*CAPEX!{cw}{CAP_R['mech_c']}"
+                   f"+{_asmp('amc_net')}*CAPEX!{cw}{CAP_R['net_c']}"
+                   f"+{_asmp('amc_soft')}*CAPEX!{cw}{CAP_R['soft_c']}")
+        else:
+            mep = ""
+        f(r, j, f"=IF({cy_gate(j)},{civil}{mep},0)")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     OPX_R['network'] = r
@@ -1420,7 +1438,7 @@ def write_cfs(wb):
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CFS_R['maint_cx'] = r
-    _lbl(ws, r, "Less: Maintenance CapEx", "Cr")
+    _lbl(ws, r, "Less: Replacement CapEx", "Cr")
     for j in range(N):
         f(r, j, f"=-CAPEX!{cl(j)}{CAP_R['maint']}")
     _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
@@ -1476,7 +1494,7 @@ def write_cfs(wb):
     _hdr(ws, r, "DEBT SERVICE COVERAGE"); r += 1
 
     CFS_R['cfads'] = r
-    _lbl(ws, r, "CFADS  (EBITDA − Tax − ΔWC − Maint CapEx)", "Cr", bold=True)
+    _lbl(ws, r, "CFADS  (EBITDA − Tax − ΔWC − Replacement CapEx)", "Cr", bold=True)
     for j in range(N):
         f(r, j, f"=OPEX!{cl(j)}{OPX_R['ebitda']}"
                 f"-TAX!{cl(j)}{TAX_R['tax']}"
@@ -1494,7 +1512,8 @@ def write_cfs(wb):
     _lbl(ws, r, "DSCR", "x", bold=True)
     for j in range(N):
         ds = CFS_R['debt_svc']
-        f(r, j, f"=IF(CFS!{cl(j)}{ds}>0,MAX(CFS!{cl(j)}{CFS_R['cfads']}/CFS!{cl(j)}{ds},0),\"\")",
+        # No debt service (construction year 0, pre-drawdown) -> show 0, not blank.
+        f(r, j, f"=IF(CFS!{cl(j)}{ds}>0,MAX(CFS!{cl(j)}{CFS_R['cfads']}/CFS!{cl(j)}{ds},0),0)",
           FMT_MX, True)
     r += 1
 
@@ -1947,13 +1966,16 @@ def generate(out_path: str = "outputs/excel_models/dcf_model.xlsx", override: di
     workbook reflects that run's inputs and assumptions; otherwise it uses
     the module defaults. `override` keys: ui, rev, cap, opx, dep, loan, tax,
     wc, val."""
-    global USER_INPUTS, N, YEARS, _OVERRIDE
+    global USER_INPUTS, N, YEARS, _OVERRIDE, _MW_AMC, _CY_YEARS
     _OVERRIDE = override
     # Deterministically set module state every call so a prior run's params
     # never leak into a later default generation.
     USER_INPUTS = override["ui"] if (override and override.get("ui")) else dict(_DEFAULT_USER_INPUTS)
     N = USER_INPUTS["projection_years"]
     YEARS = list(range(USER_INPUTS["start_year"], USER_INPUTS["start_year"] + N))
+    _opx_a = _A("opx", get_default_opex_assumptions)
+    _MW_AMC = int(_opx_a.get("maint_warranty_years", 0))
+    _CY_YEARS = int(_opx_a.get("construction_years", 1))
 
     print("Running pipeline…")
     P = _run_pipeline()

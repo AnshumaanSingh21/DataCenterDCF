@@ -207,47 +207,32 @@ def compute_opex(
 
     maintenance_cost = []
 
+    # MEP equipment (electrical/mechanical/network/software) is under OEM warranty
+    # for `maint_warranty_years` after deployment, so its AMC opex applies only once
+    # out of warranty. Civil (building O&M) is maintained from commissioning.
+    # Default 0 = full AMC from year 1 (original behaviour, unchanged).
+    _mw = int(assumptions.get("maint_warranty_years", 0))
+
     for i in range(years):
 
         if i < construction_years:
             maintenance_cost.append(0.0)
             continue
 
-        maintenance_cost.append(
+        civil_amc = cumulative_civil[i] * assumptions["civil_amc_pct"]
 
-            cumulative_civil[i]
-            * assumptions[
-                "civil_amc_pct"
-            ]
+        j = i - _mw   # MEP capex is out of warranty if it was deployed by year j
+        if j >= construction_years:
+            mep_amc = (
+                cumulative_electrical[j] * assumptions["electrical_amc_pct"]
+                + cumulative_mechanical[j] * assumptions["mechanical_amc_pct"]
+                + cumulative_network[j]    * assumptions["network_amc_pct"]
+                + cumulative_software[j]   * assumptions["software_amc_pct"]
+            )
+        else:
+            mep_amc = 0.0
 
-            +
-
-            cumulative_electrical[i]
-            * assumptions[
-                "electrical_amc_pct"
-            ]
-
-            +
-
-            cumulative_mechanical[i]
-            * assumptions[
-                "mechanical_amc_pct"
-            ]
-
-            +
-
-            cumulative_network[i]
-            * assumptions[
-                "network_amc_pct"
-            ]
-
-            +
-
-            cumulative_software[i]
-            * assumptions[
-                "software_amc_pct"
-            ]
-        )
+        maintenance_cost.append(civil_amc + mep_amc)
       
 
     

@@ -69,6 +69,14 @@ def get_default_opex_assumptions():
         "network_amc_pct": 0.08,
         "software_amc_pct": 0.12,
 
+        # MEP equipment (electrical/mechanical/network/software) carries a standard
+        # 1-year OEM warranty, during which the manufacturer bears its maintenance —
+        # so no AMC opex accrues on newly-deployed MEP for `maint_warranty_years`
+        # after it goes in. Civil (building O&M) is maintained from commissioning.
+        # Conservative: 1 yr is the near-universal bundled warranty; longer periods
+        # (or the separate 3-yr replacement-capex warranty) are not relied on here.
+        "maint_warranty_years": 1,
+
         # =====================================================
         # SECURITY
         # =====================================================
