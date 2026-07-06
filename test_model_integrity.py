@@ -137,10 +137,13 @@ def test_base_case_metrics_within_tolerance():
     #  (8) horizon convention: projection_years is now OPERATING years; the model
     #      adds +1 construction year. BASE 10 -> 1 build + 10 operating (11 total),
     #      adding one stabilized year (NPV/MOIC up vs the prior 9-operating basis).
-    assert abs(v["npv"] - 78.6) < 2.0,                 f"NPV drifted: {v['npv']}"
-    assert abs(v["project_irr"] - 0.139) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
-    assert abs(v["equity_irr"] - 0.155) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
-    assert abs(cf["equity"]["moic"] - 3.28) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
+    #  (9) differentiated escalation: power 5% -> 4% (declining Indian tariffs),
+    #      colo & cross-connect stay 5%. Unfreezes the revenue mix; power share
+    #      declines over the horizon. Small NPV impact (power ~pass-through).
+    assert abs(v["npv"] - 75.2) < 2.0,                 f"NPV drifted: {v['npv']}"
+    assert abs(v["project_irr"] - 0.138) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
+    assert abs(v["equity_irr"] - 0.153) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
+    assert abs(cf["equity"]["moic"] - 3.24) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
 
 
 def test_dscr_profile_shape():

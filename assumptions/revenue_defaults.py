@@ -76,7 +76,10 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
 
     "power_markup_rs_per_kwh": 1.25,
 
-    "power_tariff_escalation": 0.05,
+    # Power escalates slower than colo/cross-connect (5%) because Indian HT
+    # tariffs are declining (MERC: -15% FY25-26, then ~-4%/yr). This keeps power's
+    # revenue share from rising and lets the mix evolve over the horizon.
+    "power_tariff_escalation": 0.04,
 
     "power_realization_pct": 1.0,
 

@@ -287,7 +287,7 @@ def write_asmp(wb, P):
     AR['pwr_markup']    = r; inp(r, "Power markup",                 "Rs/kWh",      rev_a['power_markup_rs_per_kwh'],      FMT_CR, src=True); r += 1
     AR['tenant_tariff'] = r
     der(r, "Tenant power tariff (Year 1)", "Rs/kWh", f"=ASMP!$C${r-2}+ASMP!$C${r-1}", FMT_CR); r += 1
-    AR['pwr_esc']       = r; inp(r, "Power tariff escalation",      "% p.a.",      0.05,     FMT_P1); r += 1
+    AR['pwr_esc']       = r; inp(r, "Power tariff escalation",      "% p.a.",      rev_a.get('power_tariff_escalation', 0.04), FMT_P1); r += 1
     AR['pue']           = r; inp(r, "PUE",                          "–",           rev_a['pue'],  FMT_CR, src=True); r += 1
     AR['kw_per_rack']   = r; inp(r, "IT load per rack",             "kW/rack",     rev_a.get('kw_per_rack', 6.0), FMT_CR); r += 1
     AR['dot_share']     = r; inp(r, "DoT revenue share",            "%",           0.0,      FMT_P2); r += 1

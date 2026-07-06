@@ -11,12 +11,11 @@ const ROWS = [
   { label: 'Net Revenue',           key: 'net_revenue',           format: 'cr', highlight: true },
 ];
 
-// Revenue streams shown in the mix pies (Net = sum of these four)
+// Revenue streams shown in the mix pies (OTC excluded — negligible, ~0.2%)
 const STREAMS = [
   { label: 'Colocation',    key: 'rack_revenue',          color: '#00338D' },
   { label: 'Power',         key: 'power_revenue',         color: '#00A36C' },
   { label: 'Cross-Connect', key: 'cross_connect_revenue', color: '#7C3AED' },
-  { label: 'OTC',           key: 'otc_revenue',           color: '#F59E0B' },
 ];
 
 // Lightweight dependency-free SVG donut
@@ -114,9 +113,7 @@ export default function RevenuePage() {
                 revenue={result.revenue}
                 idx={idx}
                 year={yrs[idx]}
-                caption={
-                  i === 0 ? 'First operating year' : i === picks.length - 1 ? 'Final year' : 'Mid-term'
-                }
+                caption={`Year ${idx}${i === 0 ? ' (Operating)' : ''}`}
               />
             ))}
           </div>
