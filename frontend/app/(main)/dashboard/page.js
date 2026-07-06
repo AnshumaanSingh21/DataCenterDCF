@@ -74,7 +74,7 @@ export default function DashboardPage() {
     <div className="space-y-6 max-w-screen-xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#1A1F36]">Project Dashboard</h1>
+          <h1 className="text-xl font-bold text-[#1A1F36]">Key Metrics</h1>
           <p className="text-sm text-[#6B7280] mt-0.5">{subtitle}</p>
         </div>
         <button
