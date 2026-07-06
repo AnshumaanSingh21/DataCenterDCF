@@ -44,7 +44,10 @@ SCENARIOS = [
 
 def run_model(user_inputs):
     """Run the full pipeline with default assumptions (no LLM). CapEx owns the
-    deployment schedule; revenue occupancy is capped by it (single source)."""
+    deployment schedule; revenue occupancy is capped by it (single source).
+    projection_years is the OPERATING horizon; the model adds +1 for the
+    construction year (year 0), matching the API's _build_inputs."""
+    user_inputs = {**user_inputs, "projection_years": user_inputs["projection_years"] + 1}
     cap = compute_capex(user_inputs, get_default_capex_assumptions())
     ui = {**user_inputs, "deployment_schedule": {
         p["year"]: p["racks"] for p in cap["deployment_schedule"]
@@ -94,8 +97,8 @@ def test_occupancy_never_exceeds_deployment():
 def test_horizons_length_safe():
     for yrs in (5, 10, 15, 20):
         out = run_model({**BASE, "projection_years": yrs})
-        assert len(out["cf"]["metadata"]["years"]) == yrs
-        assert len(out["rev"]["drivers"]["occupied_racks"]) == yrs
+        assert len(out["cf"]["metadata"]["years"]) == yrs + 1   # +1 construction year
+        assert len(out["rev"]["drivers"]["occupied_racks"]) == yrs + 1
         for chk in out["cf"]["balance_sheet"]["balance_check"]:
             assert abs(chk) < 1e-6
 
@@ -131,10 +134,13 @@ def test_base_case_metrics_within_tolerance():
     #      (DCs reclassified as industrial; was commercial 8.5-9.5), power markup
     #      trimmed 1.5 -> 1.25 Rs/kWh (retail colo range). Tariff is ~pass-through;
     #      the markup trim lowers NPV.
-    assert abs(v["npv"] - 69.6) < 2.0,                 f"NPV drifted: {v['npv']}"
+    #  (8) horizon convention: projection_years is now OPERATING years; the model
+    #      adds +1 construction year. BASE 10 -> 1 build + 10 operating (11 total),
+    #      adding one stabilized year (NPV/MOIC up vs the prior 9-operating basis).
+    assert abs(v["npv"] - 78.6) < 2.0,                 f"NPV drifted: {v['npv']}"
     assert abs(v["project_irr"] - 0.139) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
-    assert abs(v["equity_irr"] - 0.154) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
-    assert abs(cf["equity"]["moic"] - 2.86) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
+    assert abs(v["equity_irr"] - 0.155) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
+    assert abs(cf["equity"]["moic"] - 3.28) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
 
 
 def test_dscr_profile_shape():
@@ -150,9 +156,11 @@ def test_dscr_profile_shape():
 # ── Excel generation (no crashes across scenarios/horizons) ─────────────────
 
 def _excel_override(user_inputs):
-    """Build a generate() override using default assumptions (no LLM)."""
+    """Build a generate() override using default assumptions (no LLM).
+    projection_years is OPERATING years; add +1 for construction to match the
+    engine (run_model) and the API so Excel↔engine parity holds."""
     return {
-        "ui":   user_inputs,
+        "ui":   {**user_inputs, "projection_years": user_inputs["projection_years"] + 1},
         "rev":  get_default_revenue_assumptions(),
         "cap":  get_default_capex_assumptions(),
         "opx":  get_default_opex_assumptions(),
@@ -191,7 +199,7 @@ def _assert_excel_matches_engine(user_inputs):
     import formulas
     from src.reporting.excel_generator import generate
 
-    n = user_inputs["projection_years"]
+    n = user_inputs["projection_years"] + 1   # +1 construction year (operating -> total)
     fd, path = tempfile.mkstemp(suffix=".xlsx"); os.close(fd)
     try:
         generate(path, override=_excel_override(user_inputs))

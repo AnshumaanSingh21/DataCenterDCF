@@ -130,7 +130,7 @@ export default function AssumptionsPage() {
           <SelectField label="Facility Type" name="facility_type" value={form.facility_type} onChange={onChange}
             options={FACILITY_TYPES} />
           <Field label="Start Year" name="start_year" value={form.start_year} onChange={onChange} step={1} min={2024} />
-          <Field label="Projection Years" name="projection_years" value={form.projection_years} onChange={onChange} step={1} min={5} max={20} unit="years" />
+          <Field label="Operating Years" name="projection_years" value={form.projection_years} onChange={onChange} step={1} min={5} max={20} unit="years" />
         </div>
       </Card>
 

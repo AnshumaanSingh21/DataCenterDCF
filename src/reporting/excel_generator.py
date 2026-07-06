@@ -536,7 +536,7 @@ def write_rev(wb):
     _lbl(ws, r, "Gross revenue", "Cr", bold=True)
     for j in range(N):
         f(r, j, f"=REV!{cl(j)}{REV_R['colo']}+REV!{cl(j)}{REV_R['otc']}+REV!{cl(j)}{REV_R['power']}+REV!{cl(j)}{REV_R['xc']}", FMT_CR, bold=True, fill=LTGREY)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, bold=True, fill=LTGREY)
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, bold=True, fill=LTGREY)
     r += 1
 
     REV_R['dot'] = r
@@ -549,7 +549,7 @@ def write_rev(wb):
     _lbl(ws, r, "Net revenue", "Cr", bold=True)
     for j in range(N):
         f(r, j, f"=REV!{cl(j)}{REV_R['gross']}+REV!{cl(j)}{REV_R['dot']}", FMT_CR, bold=True, fill=LTGREY)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, bold=True, fill=LTGREY)
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, bold=True, fill=LTGREY)
     r += 2
 
     # ── Power cost memo ───────────────────────────────────────────────────
@@ -604,39 +604,39 @@ def write_capex(wb):
             f(r, j, f"={_asmp('civil_pr')}*SUM(ASMP!{cl(0)}${AR['deploy_arr']}:{cl(N-1)}${AR['deploy_arr']})")
         else:
             f(r, j, 0)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CAP_R['elec'] = r
     _lbl(ws, r, "Electrical systems", "Cr")
     for j in range(N): f(r, j, pr_fml('elec_pr', j))
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CAP_R['mech'] = r
     _lbl(ws, r, "Mechanical systems", "Cr")
     for j in range(N): f(r, j, pr_fml('mech_pr', j))
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CAP_R['it'] = r
     _lbl(ws, r, "IT hardware", "Cr")
     for j in range(N): f(r, j, pr_fml('it_pr', j))
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CAP_R['net'] = r
     _lbl(ws, r, "Network infrastructure", "Cr")
     for j in range(N): f(r, j, pr_fml('net_pr', j))
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CAP_R['software'] = r
     _lbl(ws, r, "Software & licensing (Ph1 only)", "Cr")
     for j in range(N):
         f(r, j, f"={_asmp('software_c')}" if j == 0 else 0)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CAP_R['site'] = r
     _lbl(ws, r, "Land & site prep (Ph1 only)", "Cr")
     for j in range(N):
         f(r, j, f"={_asmp('land_c')}+{_asmp('siteprep_c')}+{_asmp('misc_infra_c')}" if j == 0 else 0)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CAP_R['preop'] = r
     _lbl(ws, r, "Pre-operational expenses", "Cr")
@@ -644,7 +644,7 @@ def write_capex(wb):
     for j in range(N):
         hard = "+".join(f"CAPEX!{cl(j)}{rr}" for rr in hard_rows)
         f(r, j, f"={_asmp('preop_pct')}*({hard})")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     r += 1
     CAP_R['total'] = r
@@ -656,7 +656,7 @@ def write_capex(wb):
         f(r, j, f"={terms}", bold=True, fill=LTGREY)
         ws.cell(row=r, column=COL_YR0+j).number_format = FMT_CR
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, bold=True, fill=LTGREY, bdr=True)
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, bold=True, fill=LTGREY, bdr=True)
     _lbl(ws, r, "Total CapEx", "Cr", bold=True, fill=LTGREY); r += 1
 
     CAP_R['cumul'] = r
@@ -698,7 +698,7 @@ def write_capex(wb):
             for p in range(3)
         )
         f(r, j, f"={_asmp('maint_cx')}*({eligible_terms})")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 2
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 2
 
     # ── Sources & Uses ────────────────────────────────────────────────────
     _subhdr(ws, r, "SOURCES & USES"); r += 1
@@ -706,13 +706,13 @@ def write_capex(wb):
     _lbl(ws, r, "Equity funded", "Cr")
     for j in range(N):
         f(r, j, f"=CAPEX!{cl(j)}{CAP_R['total']}*{_asmp('eq_pct')}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CAP_R['debt_fund'] = r
     _lbl(ws, r, "Debt funded", "Cr")
     for j in range(N):
         f(r, j, f"=CAPEX!{cl(j)}{CAP_R['total']}*{_asmp('debt_pct')}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     _col_widths(ws)
     return ws
@@ -741,14 +741,14 @@ def write_opex(wb):
     _lbl(ws, r, "Power cost (grid tariff × load)", "Cr")
     for j in range(N):
         f(r, j, f"=SIZE!{cl(j)}{SIZE_R['fac_load']}*REV!{cl(j)}{REV_R['util_esc']}*8760/10000000")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     OPX_R['manpower'] = r
     _lbl(ws, r, "Manpower", "Cr")
     for j in range(N):
         f(r, j, f"=ROUNDUP(SIZE!{cl(j)}{occ}/100*{_asmp('fte_per100')},0)"
                 f"*{_asmp('avg_ctc')}/100*(1+{_asmp('mp_esc')})^({cl(j)}4-1)")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     # Construction-year gate: these costs are zero until operations begin
     # (period > construction_years), matching the engine.
@@ -758,7 +758,7 @@ def write_opex(wb):
     _lbl(ws, r, "Housekeeping", "Cr")
     for j in range(N):
         f(r, j, f"=IF({cy_gate(j)},{_asmp('facility_sqft')}*{_asmp('hk_rate')}*(1+{_asmp('hk_esc')})^({cl(j)}4-1)/10000000,0)")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     OPX_R['amc'] = r
     _lbl(ws, r, "Maintenance (AMC, asset-based)", "Cr")
@@ -769,32 +769,32 @@ def write_opex(wb):
                 f"+{_asmp('amc_mech')}*CAPEX!{c}{CAP_R['mech_c']}"
                 f"+{_asmp('amc_net')}*CAPEX!{c}{CAP_R['net_c']}"
                 f"+{_asmp('amc_soft')}*CAPEX!{c}{CAP_R['soft_c']},0)")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     OPX_R['network'] = r
     _lbl(ws, r, "Network & connectivity", "Cr")
     for j in range(N):
         f(r, j, f"={_asmp('net_pct')}*REV!{cl(j)}{net}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     OPX_R['security'] = r
     _lbl(ws, r, "Security (physical)", "Cr")
     for j in range(N):
         f(r, j, f"={_asmp('sec_pct')}*REV!{cl(j)}{net}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     OPX_R['insurance'] = r
     _lbl(ws, r, "Insurance", "Cr")
     for j in range(N):
         f(r, j, f"=IF({cy_gate(j)},{_asmp('ins_pct')}*CAPEX!{cl(j)}{CAP_R['cumul']},0)")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     OPX_R['ptax'] = r
     _lbl(ws, r, "Property tax (land + civil basis)", "Cr")
     for j in range(N):
         base = f"({_asmp('land_c')}+SUM(CAPEX!$C${CAP_R['civil']}:{cl(j)}${CAP_R['civil']}))"
         f(r, j, f"=IF({cy_gate(j)},{_asmp('ptax_pct')}*{base},0)")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     OPX_R['marketing'] = r
     _lbl(ws, r, "Marketing (declining % of net revenue)", "Cr")
@@ -804,13 +804,13 @@ def write_opex(wb):
                f"-({_asmp('mkt_pct_start')}-{_asmp('mkt_pct_end')})"
                f"*({cl(j)}4-1)/({_asmp('proj_years')}-1))")
         f(r, j, f"={pct}*REV!{cl(j)}{REV_R['net']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     OPX_R['gna'] = r
     _lbl(ws, r, "G&A", "Cr")
     for j in range(N):
         f(r, j, f"={_asmp('gna_pct')}*REV!{cl(j)}{net}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     r += 1
     opx_rows = [OPX_R[k] for k in ('power','manpower','housekeeping','amc','network',
@@ -821,7 +821,7 @@ def write_opex(wb):
         terms = "+".join(f"OPEX!{cl(j)}{rr}" for rr in opx_rows)
         f(r, j, f"={terms}", FMT_CR, True, LTGREY)
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY, bdr=True)
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY, bdr=True)
     r += 2
 
     OPX_R['ebitda'] = r
@@ -829,7 +829,7 @@ def write_opex(wb):
     for j in range(N):
         f(r, j, f"=REV!{cl(j)}{REV_R['net']}-OPEX!{cl(j)}{OPX_R['total']}", FMT_CR, True, LTGREY)
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY, bdr=True)
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY, bdr=True)
     r += 1
 
     OPX_R['ebitda_m'] = r
@@ -875,34 +875,34 @@ def write_depr(wb):
     DEP_R['civil'] = r
     _lbl(ws, r, "Civil & structural", "Cr")
     for j in range(N): f(r, j, dep_fml(j, CAP_R['civil'], 'life_civil'))
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     DEP_R['elec'] = r
     _lbl(ws, r, "Electrical systems", "Cr")
     for j in range(N): f(r, j, dep_fml(j, CAP_R['elec'], 'life_elec'))
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     DEP_R['mech'] = r
     _lbl(ws, r, "Mechanical systems", "Cr")
     for j in range(N): f(r, j, dep_fml(j, CAP_R['mech'], 'life_mech'))
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     DEP_R['it'] = r
     _lbl(ws, r, "IT hardware", "Cr")
     for j in range(N): f(r, j, dep_fml(j, CAP_R['it'], 'life_it'))
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     DEP_R['net'] = r
     _lbl(ws, r, "Network infrastructure", "Cr")
     for j in range(N): f(r, j, dep_fml(j, CAP_R['net'], 'life_net'))
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     DEP_R['soft'] = r
     _lbl(ws, r, "Software & licensing", "Cr")
     for j in range(N):
         # Software deployed in Phase 1 (col C); deferred to commissioning like other assets
         f(r, j, f"=IF({cl(j)}4>={_asmp('construction_years')}+1,CAPEX!$C${CAP_R['software']}/{_asmp('life_soft')},0)")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     r += 1
     dep_rows = [DEP_R[k] for k in ('civil','elec','mech','it','net','soft')]
@@ -912,7 +912,7 @@ def write_depr(wb):
         terms = "+".join(f"DEPR!{cl(j)}{rr}" for rr in dep_rows)
         f(r, j, f"={terms}", FMT_CR, True, LTGREY)
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY, bdr=True)
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY, bdr=True)
     r += 1
 
     DEP_R['accum'] = r
@@ -928,7 +928,7 @@ def write_depr(wb):
     _lbl(ws, r, "Net book value (NBV)", "Cr", bold=True)
     for j in range(N):
         f(r, j, f"=CAPEX!{cl(j)}{CAP_R['cumul']}-DEPR!{cl(j)}{DEP_R['accum']}", FMT_CR, True, LTGREY)
-    _w(ws, r, COL_YR0+N, f"=DEPR!L{r}", FMT_CR, True, LTGREY)  # terminal NBV
+    _w(ws, r, COL_YR0+N, f"=DEPR!{cl(N-1)}{r}", FMT_CR, True, LTGREY)  # terminal NBV (last year)
     r += 1
 
     _col_widths(ws)
@@ -1023,27 +1023,27 @@ def write_debt(wb):
         # Sum of all loan_amount rows in that year column
         terms = "+".join(f"DEBT!{cl(j)}{lr}" for lr in t_loan_rows)
         f(r, j, f"={terms}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     DBT_R['equity'] = r
     _lbl(ws, r, "Equity injection", "Cr")
     for j in range(N):
         f(r, j, f"=CAPEX!{cl(j)}{CAP_R['eq_fund']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     DBT_R['interest'] = r
     _lbl(ws, r, "Total interest expense", "Cr")
     for j in range(N):
         terms = "+".join(f"DEBT!{cl(j)}{DBT_R[f't{i}_int']}" for i in created_tranches)
         f(r, j, f"={terms}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     DBT_R['principal'] = r
     _lbl(ws, r, "Total principal repayment", "Cr")
     for j in range(N):
         terms = "+".join(f"DEBT!{cl(j)}{DBT_R[f't{i}_prin']}" for i in created_tranches)
         f(r, j, f"={terms}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     DBT_R['closing'] = r
     _lbl(ws, r, "Closing debt balance", "Cr", bold=True)
@@ -1051,7 +1051,7 @@ def write_debt(wb):
         terms = "+".join(f"DEBT!{cl(j)}{DBT_R[f't{i}_clos']}" for i in created_tranches)
         f(r, j, f"={terms}", bold=True, fill=LTGREY)
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
-    _w(ws, r, COL_YR0+N, f"=DEBT!L{r}", FMT_CR, True, LTGREY, bdr=True)
+    _w(ws, r, COL_YR0+N, f"=DEBT!{cl(N-1)}{r}", FMT_CR, True, LTGREY, bdr=True)
     r += 1
 
     _col_widths(ws)
@@ -1081,7 +1081,7 @@ def write_tax(wb):
     _lbl(ws, r, "EBT", "Cr")
     for j in range(N):
         f(r, j, f"=PNL!{cl(j)}{PNL_R['ebt']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     # Loss carry-forward pool (closing balance): grows in loss years, absorbed
     # by future profits. closing = MAX(prior_pool − EBT, 0).
@@ -1106,7 +1106,7 @@ def write_tax(wb):
               f"=MAX(TAX!{cl(j)}{TAX_R['ebt']}-TAX!{cl(j-1)}{TAX_R['lcf']},0)*{_asmp('tax_rate')}",
               FMT_CR, True, LTGREY)
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY, bdr=True)
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY, bdr=True)
     r += 1
 
     _col_widths(ws)
@@ -1183,13 +1183,13 @@ def write_pnl(wb):
     _lbl(ws, r, "Net revenue", "Cr", bold=True)
     for j in range(N):
         f(r, j, f"=REV!{cl(j)}{REV_R['net']}", bold=True)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True); r += 1
 
     PNL_R['total_opx'] = r
     _lbl(ws, r, "Total OpEx", "Cr")
     for j in range(N):
         f(r, j, f"=-OPEX!{cl(j)}{OPX_R['total']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     PNL_R['ebitda'] = r
     _lbl(ws, r, "EBITDA", "Cr", bold=True, fill=LTGREY)
@@ -1197,7 +1197,7 @@ def write_pnl(wb):
         f(r, j, f"=PNL!{cl(j)}{PNL_R['net_rev']}+PNL!{cl(j)}{PNL_R['total_opx']}", bold=True, fill=LTGREY)
         ws.cell(row=r, column=COL_YR0+j).number_format = FMT_CR
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY, bdr=True); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY, bdr=True); r += 1
 
     PNL_R['ebitda_m'] = r
     _lbl(ws, r, "EBITDA margin", "%", italic=True)
@@ -1210,33 +1210,33 @@ def write_pnl(wb):
     _lbl(ws, r, "Depreciation (SLM)", "Cr")
     for j in range(N):
         f(r, j, f"=-DEPR!{cl(j)}{DEP_R['total']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     PNL_R['ebit'] = r
     _lbl(ws, r, "EBIT", "Cr", bold=True, fill=LTGREY)
     for j in range(N):
         f(r, j, f"=PNL!{cl(j)}{PNL_R['ebitda']}+PNL!{cl(j)}{PNL_R['dep']}", bold=True, fill=LTGREY)
         ws.cell(row=r, column=COL_YR0+j).number_format = FMT_CR
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY); r += 1
 
     PNL_R['interest'] = r
     _lbl(ws, r, "Interest expense", "Cr")
     for j in range(N):
         f(r, j, f"=-DEBT!{cl(j)}{DBT_R['interest']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     PNL_R['ebt'] = r
     _lbl(ws, r, "EBT / PBT", "Cr", bold=True, fill=LTGREY)
     for j in range(N):
         f(r, j, f"=PNL!{cl(j)}{PNL_R['ebit']}+PNL!{cl(j)}{PNL_R['interest']}", bold=True, fill=LTGREY)
         ws.cell(row=r, column=COL_YR0+j).number_format = FMT_CR
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY); r += 1
 
     PNL_R['tax'] = r
     _lbl(ws, r, "Income tax", "Cr")
     for j in range(N):
         f(r, j, f"=-TAX!{cl(j)}{TAX_R['tax']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     PNL_R['pat'] = r
     _lbl(ws, r, "PAT (Profit after tax)", "Cr", bold=True, fill=LTGREY)
@@ -1244,7 +1244,7 @@ def write_pnl(wb):
         f(r, j, f"=PNL!{cl(j)}{PNL_R['ebt']}+PNL!{cl(j)}{PNL_R['tax']}", bold=True, fill=LTGREY)
         ws.cell(row=r, column=COL_YR0+j).number_format = FMT_CR
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY, bdr=True); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY, bdr=True); r += 1
 
     PNL_R['pat_m'] = r
     _lbl(ws, r, "PAT margin", "%", italic=True)
@@ -1399,31 +1399,31 @@ def write_cfs(wb):
             f(r, j, f"=PNL!{cl(0)}{PNL_R['ebit']}-MAX(PNL!{cl(0)}{PNL_R['ebit']},0)*{_asmp('tax_rate')}")
         else:
             f(r, j, f"=PNL!{cl(j)}{PNL_R['ebit']}-MAX(PNL!{cl(j)}{PNL_R['ebit']}-CFS!{cl(j-1)}{CFS_R['unlev_lcf']},0)*{_asmp('tax_rate')}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CFS_R['dep_add'] = r
     _lbl(ws, r, "Add: depreciation (non-cash)", "Cr")
     for j in range(N):
         f(r, j, f"=DEPR!{cl(j)}{DEP_R['total']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CFS_R['delta_wc'] = r
     _lbl(ws, r, "Less: increase in working capital", "Cr")
     for j in range(N):
         f(r, j, f"=-WC!{cl(j)}{WC_R['delta']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CFS_R['capex'] = r
     _lbl(ws, r, "Less: CapEx (growth)", "Cr")
     for j in range(N):
         f(r, j, f"=-CAPEX!{cl(j)}{CAP_R['total']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CFS_R['maint_cx'] = r
     _lbl(ws, r, "Less: Maintenance CapEx", "Cr")
     for j in range(N):
         f(r, j, f"=-CAPEX!{cl(j)}{CAP_R['maint']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     r += 1
     CFS_R['fcff'] = r
@@ -1433,7 +1433,7 @@ def write_cfs(wb):
                          for k in ('nopat','dep_add','delta_wc','capex'))
         f(r, j, f"={terms}", FMT_CR, True, LTGREY)
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY, bdr=True); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY, bdr=True); r += 1
 
     CFS_R['cumul_fcff'] = r
     _lbl(ws, r, "Cumulative FCFF", "Cr")
@@ -1451,13 +1451,13 @@ def write_cfs(wb):
     _lbl(ws, r, "Add: debt drawdown", "Cr")
     for j in range(N):
         f(r, j, f"=DEBT!{cl(j)}{DBT_R['drawdown']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CFS_R['principal'] = r
     _lbl(ws, r, "Less: principal repayment", "Cr")
     for j in range(N):
         f(r, j, f"=-DEBT!{cl(j)}{DBT_R['principal']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     r += 1
     CFS_R['fcfe'] = r
@@ -1470,7 +1470,7 @@ def write_cfs(wb):
                 f"+CFS!{cl(j)}{CFS_R['drawdown']}+CFS!{cl(j)}{CFS_R['principal']}",
           FMT_CR, True, LTGREY)
         ws.cell(row=r, column=COL_YR0+j).border = _bdr(True, True)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True, LTGREY, bdr=True); r += 2
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True, LTGREY, bdr=True); r += 2
 
     # ── CFADS & DSCR ──────────────────────────────────────────────────────
     _hdr(ws, r, "DEBT SERVICE COVERAGE"); r += 1
@@ -1482,13 +1482,13 @@ def write_cfs(wb):
                 f"-TAX!{cl(j)}{TAX_R['tax']}"
                 f"-WC!{cl(j)}{WC_R['delta']}"
                 f"-CAPEX!{cl(j)}{CAP_R['maint']}", bold=True)
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR, True); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR, True); r += 1
 
     CFS_R['debt_svc'] = r
     _lbl(ws, r, "Debt service  (interest + principal)", "Cr")
     for j in range(N):
         f(r, j, f"=DEBT!{cl(j)}{DBT_R['interest']}+DEBT!{cl(j)}{DBT_R['principal']}")
-    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:L{r})", FMT_CR); r += 1
+    _w(ws, r, COL_YR0+N, f"=SUM(C{r}:{cl(N-1)}{r})", FMT_CR); r += 1
 
     CFS_R['dscr'] = r
     _lbl(ws, r, "DSCR", "x", bold=True)
@@ -1802,8 +1802,8 @@ def write_dash(wb):
         ("Project IRR",          f"=VAL!$C${VAL_R['proj_irr']}",               "% pa", FMT_P2),
         ("Equity IRR",           f"=VAL!$C${VAL_R['eq_irr']}",                 "% pa", FMT_P2),
         ("MOIC",                 f"=VAL!$C${VAL_R['moic']}",                   "x",    FMT_MX),
-        ("EBITDA Yr 10",         f"=OPEX!L{OPX_R['ebitda']}",                  "Cr",   FMT_CR),
-        ("EBITDA Margin Yr 10",  f"=OPEX!L{OPX_R['ebitda_m']}",                "%",    FMT_P1),
+        (f"EBITDA Yr {N-1}",     f"=OPEX!{cl(N-1)}{OPX_R['ebitda']}",          "Cr",   FMT_CR),
+        (f"EBITDA Margin Yr {N-1}", f"=OPEX!{cl(N-1)}{OPX_R['ebitda_m']}",     "%",    FMT_P1),
         ("Terminal Value (EV)",  f"=VAL!$C${VAL_R['tv']}",                     "Cr",   FMT_CR),
     ]
     for label, fml, unit, fmt in metrics:

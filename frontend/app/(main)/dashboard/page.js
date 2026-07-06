@@ -48,7 +48,7 @@ export default function DashboardPage() {
   const subtitle = assumptions
     ? `${Number(assumptions.total_racks).toLocaleString()} Racks · ${assumptions.location} · ` +
       `${FACILITY_LABELS[assumptions.facility_type] || assumptions.facility_type} · ` +
-      `${assumptions.projection_years}-Year Model`
+      `${assumptions.projection_years}-Year Operating Model`
     : 'Project summary';
 
   const fmtCr = (val, dec = 1) => {

@@ -160,12 +160,17 @@ def _build_inputs(req: RunRequest):
     """Build the engine inputs and per-engine assumption dicts from a request,
     applying LLM market overrides then explicit UI overrides. Returns
     (ui, assumptions_by_engine)."""
+    # The user enters the number of OPERATING years. The model horizon adds the
+    # 1-year construction period on top (year 0 = construction, zero revenue), so
+    # the engine runs (operating + 1) total years — e.g. 10 operating -> 11-year
+    # model, matching standard project-finance convention (1 build + N operating).
+    _CONSTRUCTION_YEARS = 1
     ui = {
         "total_racks":       req.total_racks,
         "location":          req.location,
         "facility_type":     req.facility_type,
         "start_year":        req.start_year,
-        "projection_years":  req.projection_years,
+        "projection_years":  req.projection_years + _CONSTRUCTION_YEARS,
     }
 
     rev_a  = get_default_revenue_assumptions()
