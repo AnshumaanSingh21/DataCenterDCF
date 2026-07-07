@@ -322,7 +322,7 @@ def write_asmp(wb, P):
     r += 1; _hdr(ws, r, "OPEX ASSUMPTIONS"); r += 1
     AR['fte_per100'] = r; inp(r, "FTE per 100 racks",            "FTE",      3,             FMT_INT); r += 1
     AR['avg_ctc']    = r; inp(r, "Avg CTC per employee",         "Rs lakh",  12,            FMT_CR); r += 1
-    AR['mp_esc']     = r; inp(r, "Manpower escalation",          "% p.a.",   0.08,          FMT_P1); r += 1
+    AR['mp_esc']     = r; inp(r, "Manpower escalation",          "% p.a.",   opx_a.get('manpower_escalation', 0.07), FMT_P1); r += 1
     AR['hk_rate']    = r; inp(r, "Housekeeping rate",            "Rs/sqft/yr",150,          FMT_INT); r += 1
     AR['hk_esc']     = r; inp(r, "Housekeeping escalation",      "% p.a.",   0.05,          FMT_P1); r += 1
     AR['amc_civil']  = r; inp(r, "AMC — civil",                  "% of cumul civil",  0.02, FMT_P2); r += 1

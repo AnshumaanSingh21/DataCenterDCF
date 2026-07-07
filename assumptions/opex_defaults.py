@@ -36,7 +36,11 @@ def get_default_opex_assumptions():
 
         "fte_per_100_racks": 3,
         "avg_ctc_per_employee_lakh": 12,
-        "manpower_escalation": 0.08,
+        # 7% blended long-run wage growth: ~2pt real over ~5% CPI, and kept just
+        # above the 5% rack-rate / 4% power escalations so margins still compress
+        # modestly (labour cost disease) without staff cost outrunning revenue by
+        # an implausible 3+ pts/yr for the whole horizon.
+        "manpower_escalation": 0.07,
 
         # Senior Management
 

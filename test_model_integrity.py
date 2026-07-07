@@ -145,10 +145,13 @@ def test_base_case_metrics_within_tolerance():
     #      operating year (civil O&M still from day one). Flips the first
     #      operating year EBITDA from ~-0.7 to +5.8 (no more negative operating
     #      year); genuinely avoided cost, so NPV rises 75.2 -> 84.2.
-    assert abs(v["npv"] - 84.2) < 2.0,                 f"NPV drifted: {v['npv']}"
-    assert abs(v["project_irr"] - 0.142) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
-    assert abs(v["equity_irr"] - 0.158) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
-    assert abs(cf["equity"]["moic"] - 3.39) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
+    # (11) manpower escalation trimmed 8% -> 7% (blended wage growth ~2pt real
+    #      over CPI; kept just above the 5%/4% revenue escalations). Slightly
+    #      less cost drag, NPV 84.2 -> 87.1.
+    assert abs(v["npv"] - 87.1) < 2.0,                 f"NPV drifted: {v['npv']}"
+    assert abs(v["project_irr"] - 0.143) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
+    assert abs(v["equity_irr"] - 0.160) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
+    assert abs(cf["equity"]["moic"] - 3.42) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
 
 
 def test_dscr_profile_shape():
