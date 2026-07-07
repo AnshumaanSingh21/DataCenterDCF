@@ -80,6 +80,10 @@ def _bdr(top=False, bot=False):
     return Border(top=t, bottom=b)
 
 FMT_CR  = '#,##0.00;[Red]-#,##0.00'
+# Fine precision for small per-unit rupee-crore inputs (per-rack costs, per-XC
+# fees) that would round to a misleading "0.00" at two decimals. Shows one
+# forced decimal plus up to three more, trailing zeros trimmed (0.003, 0.1032).
+FMT_CR4 = '#,##0.0###;[Red]-#,##0.0###'
 FMT_CR0 = '#,##0;[Red]-#,##0'
 FMT_P1  = '0.0%'
 FMT_P2  = '0.00%'
@@ -279,14 +283,14 @@ def write_asmp(wb, P):
 
     # ── REVENUE ───────────────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "REVENUE ASSUMPTIONS"); r += 1
-    AR['rack_mrc']      = r; inp(r, "Rack MRC (Year 1)",            "Cr/rack/mo",  rev_a['rack_mrc_crore'],             FMT_CR, src=True); r += 1
+    AR['rack_mrc']      = r; inp(r, "Rack MRC (Year 1)",            "Cr/rack/mo",  rev_a['rack_mrc_crore'],             FMT_CR4, src=True); r += 1
     AR['rack_mrc_esc']  = r; inp(r, "Rack MRC escalation",          "% p.a.",      rev_a.get('rack_mrc_escalation', 0.05), FMT_P1); r += 1
-    AR['otc_fee']       = r; inp(r, "OTC fee per new rack (Yr 1)",  "Cr/rack",     rev_a.get('otc_fee_crore', 0.0003),    FMT_CR); r += 1
+    AR['otc_fee']       = r; inp(r, "OTC fee per new rack (Yr 1)",  "Cr/rack",     rev_a.get('otc_fee_crore', 0.0003),    FMT_CR4); r += 1
     AR['otc_esc']       = r; inp(r, "OTC fee escalation",           "% p.a.",      0.05,     FMT_P1); r += 1
     AR['xc_pen_init']   = r; inp(r, "Cross-connects/rack (initial)","XC/rack",     rev_a.get('cross_connect_penetration_initial', 1.0),       FMT_CR); r += 1
     AR['xc_pen_mat']    = r; inp(r, "Cross-connects/rack (mature)", "XC/rack",     rev_a.get('cross_connect_penetration_mature', 1.5),        FMT_CR); r += 1
     AR['xc_ramp']       = r; inp(r, "Cross-connect ramp years",     "yrs",         rev_a.get('cross_connect_ramp_years', 3),                  FMT_INT); r += 1
-    AR['xc_fee']        = r; inp(r, "Cross-connect MRC (Yr 1)",     "Cr/XC/mo",    rev_a.get('cross_connect_fee_per_connection_crore', 0.0),  FMT_CR); r += 1
+    AR['xc_fee']        = r; inp(r, "Cross-connect MRC (Yr 1)",     "Cr/XC/mo",    rev_a.get('cross_connect_fee_per_connection_crore', 0.0),  FMT_CR4); r += 1
     AR['xc_esc']        = r; inp(r, "Cross-connect escalation",     "% p.a.",      rev_a.get('cross_connect_escalation', 0.05),               FMT_P1); r += 1
     AR['util_tariff']   = r; inp(r, "Grid tariff (Year 1)",         "Rs/kWh",      rev_a['utility_tariff_rs_per_kwh'],    FMT_CR, src=True); r += 1
     AR['pwr_markup']    = r; inp(r, "Power markup",                 "Rs/kWh",      rev_a['power_markup_rs_per_kwh'],      FMT_CR, src=True); r += 1
@@ -303,11 +307,11 @@ def write_asmp(wb, P):
     _ph1 = P['cap']['drivers']['racks_deployed'][0] or 1
     net_per_rack  = round(cc['network_capex'][0]    / _ph1, 6)
     elec_per_rack = round(cc['electrical_capex'][0] / _ph1, 6)
-    AR['civil_pr']   = r; inp(r, "Civil cost per rack",          "Cr/rack",  cap_a['civil_cost_per_rack'],       FMT_CR, src=True); r += 1
-    AR['elec_pr']    = r; inp(r, "Electrical cost per rack",     "Cr/rack",  elec_per_rack,                     FMT_CR, src=True); r += 1
-    AR['mech_pr']    = r; inp(r, "Mechanical cost per rack",     "Cr/rack",  cap_a['mechanical_cost_per_rack'],  FMT_CR, src=True); r += 1
-    AR['it_pr']      = r; inp(r, "IT hardware cost per rack",    "Cr/rack",  cap_a['it_hardware_cost_per_rack'], FMT_CR); r += 1
-    AR['net_pr']     = r; inp(r, "Network cost per rack",        "Cr/rack",  net_per_rack,  FMT_CR); r += 1
+    AR['civil_pr']   = r; inp(r, "Civil cost per rack",          "Cr/rack",  cap_a['civil_cost_per_rack'],       FMT_CR4, src=True); r += 1
+    AR['elec_pr']    = r; inp(r, "Electrical cost per rack",     "Cr/rack",  elec_per_rack,                     FMT_CR4, src=True); r += 1
+    AR['mech_pr']    = r; inp(r, "Mechanical cost per rack",     "Cr/rack",  cap_a['mechanical_cost_per_rack'],  FMT_CR4, src=True); r += 1
+    AR['it_pr']      = r; inp(r, "IT hardware cost per rack",    "Cr/rack",  cap_a['it_hardware_cost_per_rack'], FMT_CR4); r += 1
+    AR['net_pr']     = r; inp(r, "Network cost per rack",        "Cr/rack",  net_per_rack,  FMT_CR4); r += 1
     AR['preop_pct']  = r; inp(r, "Pre-operational (% hard cost)","% hard",   cap_a.get('pre_op_pct', 0.10), FMT_P2); r += 1
     AR['software_c'] = r; inp(r, "Software CapEx (Phase 1 only)","Cr",       10.0,          FMT_CR); r += 1
     AR['land_c']       = r; inp(r, "Land cost (Phase 1 only)",              "Cr", P['cap']['site_sizing']['land_cost_crore'], FMT_CR, src=True); r += 1
