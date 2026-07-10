@@ -148,10 +148,13 @@ def test_base_case_metrics_within_tolerance():
     # (11) manpower escalation trimmed 8% -> 7% (blended wage growth ~2pt real
     #      over CPI; kept just above the 5%/4% revenue escalations). Slightly
     #      less cost drag, NPV 84.2 -> 87.1.
-    assert abs(v["npv"] - 87.1) < 2.0,                 f"NPV drifted: {v['npv']}"
-    assert abs(v["project_irr"] - 0.143) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
-    assert abs(v["equity_irr"] - 0.160) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
-    assert abs(cf["equity"]["moic"] - 3.42) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
+    # (12) cross-connect MRC Rs 5,000 -> 6,000/mo (low-to-mid of the plausible
+    #      Indian quote-based range, ~30% of the Equinix APAC ceiling; XC stays a
+    #      conservative ~7% of revenue). ~100% margin, so NPV 87.1 -> 99.8.
+    assert abs(v["npv"] - 99.8) < 2.0,                 f"NPV drifted: {v['npv']}"
+    assert abs(v["project_irr"] - 0.147) < 0.01,       f"Project IRR drifted: {v['project_irr']}"
+    assert abs(v["equity_irr"] - 0.165) < 0.01,        f"Equity IRR drifted: {v['equity_irr']}"
+    assert abs(cf["equity"]["moic"] - 3.57) < 0.3,     f"MOIC drifted: {cf['equity']['moic']}"
 
 
 def test_dscr_profile_shape():

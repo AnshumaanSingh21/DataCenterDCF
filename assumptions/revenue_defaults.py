@@ -152,9 +152,11 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
     # CEILING, not a comparable — it is the world's most interconnection-dense
     # operator. Indian operators (Yotta, STT, CtrlS, Nxtra) derive a smaller
     # share of revenue from interconnection, so we calibrate conservatively
-    # below Equinix to reflect lower ecosystem maturity. MRC of Rs 5,000/mo sits
-    # mid-band of the plausible Indian range (~Rs 3,000-8,000; quote-based, not
-    # publicly listed), anchored to the global $100-300/mo adjusted down.
+    # below Equinix to reflect lower ecosystem maturity. MRC of Rs 6,000/mo sits
+    # low-to-mid of the plausible Indian range (~Rs 3,000-10,000; quote-based, not
+    # publicly listed), anchored to the global $100-300/mo band and Equinix's
+    # ~$232/mo APAC rate (~Rs 19,700) adjusted well down — Rs 6,000 is ~30% of
+    # that ceiling, keeping cross-connect a conservative ~7% of revenue.
     #
     # Cross-connects per occupied rack RAMP with the network effect: as the
     # facility fills, each tenant has more on-site counterparties to interconnect
@@ -166,8 +168,8 @@ DEFAULT_REVENUE_ASSUMPTIONS = {
     # Fallback flat value if the ramp params above are absent.
     "cross_connect_penetration": 1.0,
 
-    # Monthly recurring charge per cross-connect (Cr) — Rs 5,000/mo.
-    "cross_connect_fee_per_connection_crore": 0.0005,
+    # Monthly recurring charge per cross-connect (Cr) — Rs 6,000/mo.
+    "cross_connect_fee_per_connection_crore": 0.0006,
 
     "cross_connect_escalation": 0.05,
 
