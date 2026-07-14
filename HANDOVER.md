@@ -4,13 +4,12 @@ A production financial-modelling platform that turns a short project brief into 
 discounted-cash-flow (DCF) model for a greenfield data centre: three linked financial
 statements, a valuation with return metrics, and a formula-driven Excel workbook.
 
-It is a **deterministic 8-engine financial pipeline** with a **thin AI layer** that only
+It is a **deterministic multi-engine financial pipeline** with a **thin AI layer** that only
 sources market-intelligence inputs (never the financial logic).
 
 - **Backend:** Python / FastAPI
 - **Frontend:** Next.js (React) + Tailwind
 - **AI:** Google Gemini (assumption sourcing), with a validator + heuristic fallback
-- **Market context:** lightweight RAG (sentence-transformers) over a local knowledge base
 - **Deployment:** backend on Render, frontend on Vercel
 
 ---
@@ -73,10 +72,11 @@ DataCenterDCF/
 │   │   └── excel_generator.py   # builds the ~15-sheet Excel workbook (formula-driven)
 │   ├── llm/                     # prompts.py, gemini_provider.py, llm_interface.py
 │   ├── extraction/              # validator.py (FIELD_MAP + bounds + cross-checks), schema
-│   ├── rag/                     # document_loader.py, vector_store.py (market context)
+│   ├── agents/                  # market_agent.py (the live AI-sourcing entry point) + cache
+│   ├── rag/                     # NOT wired in — see note in "AI assumption layer" below
 │   ├── pipeline/                # orchestration helpers (run_cashflow, run_capex_sizing)
 │   ├── schemas/                 # master_assumption_map.py
-│   ├── registry/ · agents/ · utils/   # supporting modules
+│   ├── registry/ · utils/       # supporting modules
 │
 ├── frontend/                    # Next.js app
 │   ├── app/(main)/              #   dashboard / assumptions / revenue / capex / pnl / cashflow
@@ -87,7 +87,7 @@ DataCenterDCF/
 ├── requirements.txt             # Python deps
 ├── Procfile · render.yaml       # backend deploy config
 ├── outputs/                     # market_context.json cache, generated excel_models/
-├── knowledge_base/              # source docs for the RAG market context
+├── knowledge_base/              # source docs for src/rag/ (unused — see above)
 └── presentation/deck.html       # capability-report slide deck (WIP)
 ```
 
@@ -162,8 +162,13 @@ every value it returns is validated before use.
   hardcoded in `assumptions/`.
 - **Fallback:** if the LLM/API key is unavailable, `_heuristic_*` in `main.py` supplies
   sane per-facility/per-city defaults so the platform still runs fully offline.
-- **Market context (RAG):** `src/rag/` embeds the `knowledge_base/` docs (sentence-transformers)
-  to ground the prompt; results are cached in `outputs/market_context.json` (~90-day cache).
+- **Caching:** accepted values are cached per location/facility for ~90 days
+  (`src/agents/market_cache.py`, backed by `outputs/market_context.json`), so repeat runs
+  don't re-query the LLM.
+- **`src/rag/`** (`document_loader.py`, `vector_store.py`, `retriever.py`,
+  `build_knowledge_base.py`) is a **standalone, unwired module** — nothing in the live
+  request path (`market_agent.py` → `prompts.py` → `llm_interface.py` → `validator.py`)
+  imports it. Treat it as scaffolding, not part of the running system.
 
 ---
 
