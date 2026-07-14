@@ -1,3 +1,8 @@
+# NOTE: not part of the live application. Nothing in the running app
+# (src/api/main.py) imports this module. The live market-intelligence path is
+# src/agents/market_agent.py -> src/llm/prompts.py -> src/extraction/validator.py.
+# This RAG module is unwired scaffolding — kept for reference, not executed.
+
 import os
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings

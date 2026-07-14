@@ -1,3 +1,7 @@
+# NOTE: not part of the live application. A standalone manual runner, not
+# imported by src/api/main.py. The live pipeline is wired directly in main.py
+# and mirrored in test_model_integrity.py::run_model().
+
 from assumptions.revenue_defaults import (
     get_default_revenue_assumptions
 )
