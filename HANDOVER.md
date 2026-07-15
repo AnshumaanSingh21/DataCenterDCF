@@ -87,8 +87,7 @@ DataCenterDCF/
 ├── requirements.txt             # Python deps
 ├── Procfile · render.yaml       # backend deploy config
 ├── outputs/                     # market_context.json cache, generated excel_models/
-├── knowledge_base/              # source docs for src/rag/ (unused — see above)
-└── presentation/deck.html       # capability-report slide deck (WIP)
+└── knowledge_base/              # source docs for src/rag/ (unused — see above)
 ```
 
 ---
@@ -332,7 +331,6 @@ defaults) or pass an `override` dict.
   - Terminal value assumes a long-hold (Gordon growth) — short (<~10yr) horizons understate
     value; constrain the horizon or add a two-stage TV if short-hold exits are needed.
   - PUE is a single design value (not year-varying) — standard simplification.
-  - `presentation/deck.html` — capability report deck, screenshots not yet embedded.
 
 ---
 
@@ -342,10 +340,3 @@ defaults) or pass an `override` dict.
 - `outputs/market_context.json` (market cache — churns every run)
 - `**/__pycache__/`, `*.pyc` (build artifacts)
 - `venv/`, `node_modules/`
-- Internal working docs: `PARTNER_BRIEF.md`, `design.md`, `CROSS_CONNECT_MODEL.md`,
-  `knowledge_base/` scraped content
-
----
-
-*For a plain-language overview of the model's methodology and design decisions, see the
-capability deck in `presentation/deck.html`.*
