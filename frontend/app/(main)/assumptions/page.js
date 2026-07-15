@@ -148,7 +148,19 @@ export default function AssumptionsPage() {
           {fetchingMarket && <span className="text-[10px] text-[#0077C8] animate-pulse">Fetching market values...</span>}
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Rack MRC (Year 1)" name="rack_mrc_crore" value={form.rack_mrc_crore} onChange={onChange} step={0.0001} unit="Cr/rack/mo" />
+          <Field
+            label="Rack MRC (Year 1)"
+            name="rack_mrc_lakh"
+            value={form.rack_mrc_crore != null ? +(form.rack_mrc_crore * 100).toFixed(4) : ''}
+            onChange={e => {
+              // Shown in Lakh for readability; stored as Cr (what the engine expects).
+              const lakh = Number(e.target.value);
+              setForm(prev => ({ ...prev, rack_mrc_crore: isNaN(lakh) ? prev.rack_mrc_crore : lakh / 100 }));
+              setSuccess(false);
+            }}
+            step={0.01}
+            unit="Lakh/rack/mo"
+          />
           <Field label="Grid Tariff" name="util_tariff" value={form.util_tariff} onChange={onChange} step={0.5} unit="Rs/kWh" />
           <Field label="Power Markup" name="power_markup" value={form.power_markup} onChange={onChange} step={0.1} unit="Rs/kWh" />
         </div>

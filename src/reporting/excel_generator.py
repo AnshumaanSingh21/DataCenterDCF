@@ -283,14 +283,14 @@ def write_asmp(wb, P):
 
     # ── REVENUE ───────────────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "REVENUE ASSUMPTIONS"); r += 1
-    AR['rack_mrc']      = r; inp(r, "Rack MRC (Year 1)",            "Cr/rack/mo",  rev_a['rack_mrc_crore'],             FMT_CR4, src=True); r += 1
+    AR['rack_mrc']      = r; inp(r, "Rack MRC (Year 1)",            "Lakh/rack/mo", rev_a['rack_mrc_crore']*100,          FMT_CR4, src=True); r += 1
     AR['rack_mrc_esc']  = r; inp(r, "Rack MRC escalation",          "% p.a.",      rev_a.get('rack_mrc_escalation', 0.05), FMT_P1); r += 1
-    AR['otc_fee']       = r; inp(r, "OTC fee per new rack (Yr 1)",  "Cr/rack",     rev_a.get('otc_fee_crore', 0.0003),    FMT_CR4); r += 1
+    AR['otc_fee']       = r; inp(r, "OTC fee per new rack (Yr 1)",  "Lakh/rack",   rev_a.get('otc_fee_crore', 0.0003)*100, FMT_CR4); r += 1
     AR['otc_esc']       = r; inp(r, "OTC fee escalation",           "% p.a.",      0.05,     FMT_P1); r += 1
     AR['xc_pen_init']   = r; inp(r, "Cross-connects/rack (initial)","XC/rack",     rev_a.get('cross_connect_penetration_initial', 1.0),       FMT_CR); r += 1
     AR['xc_pen_mat']    = r; inp(r, "Cross-connects/rack (mature)", "XC/rack",     rev_a.get('cross_connect_penetration_mature', 1.5),        FMT_CR); r += 1
     AR['xc_ramp']       = r; inp(r, "Cross-connect ramp years",     "yrs",         rev_a.get('cross_connect_ramp_years', 3),                  FMT_INT); r += 1
-    AR['xc_fee']        = r; inp(r, "Cross-connect MRC (Yr 1)",     "Cr/XC/mo",    rev_a.get('cross_connect_fee_per_connection_crore', 0.0),  FMT_CR4); r += 1
+    AR['xc_fee']        = r; inp(r, "Cross-connect MRC (Yr 1)",     "Lakh/XC/mo",  rev_a.get('cross_connect_fee_per_connection_crore', 0.0)*100,  FMT_CR4); r += 1
     AR['xc_esc']        = r; inp(r, "Cross-connect escalation",     "% p.a.",      rev_a.get('cross_connect_escalation', 0.05),               FMT_P1); r += 1
     AR['util_tariff']   = r; inp(r, "Grid tariff (Year 1)",         "Rs/kWh",      rev_a['utility_tariff_rs_per_kwh'],    FMT_CR, src=True); r += 1
     AR['pwr_markup']    = r; inp(r, "Power markup",                 "Rs/kWh",      rev_a['power_markup_rs_per_kwh'],      FMT_CR, src=True); r += 1
@@ -476,19 +476,19 @@ def write_rev(wb):
     # ── Escalated rates ───────────────────────────────────────────────────
     r += 1; _hdr(ws, r, "ESCALATED RATES (MEMO)"); r += 1
     REV_R['rack_mrc_esc'] = r
-    _lbl(ws, r, "Rack MRC (escalated)", "Cr/rack/mo")
+    _lbl(ws, r, "Rack MRC (escalated)", "Lakh/rack/mo")
     for j in range(N):
         f(r, j, f"={_asmp('rack_mrc')}*(1+{_asmp('rack_mrc_esc')})^({cl(j)}4-1)", FMT_CR)
     r += 1
 
     REV_R['otc_esc'] = r
-    _lbl(ws, r, "OTC fee per rack (escalated)", "Cr/rack")
+    _lbl(ws, r, "OTC fee per rack (escalated)", "Lakh/rack")
     for j in range(N):
         f(r, j, f"={_asmp('otc_fee')}*(1+{_asmp('otc_esc')})^({cl(j)}4-1)", FMT_CR)
     r += 1
 
     REV_R['xc_esc'] = r
-    _lbl(ws, r, "Cross-connect MRC (escalated)", "Cr/XC/mo")
+    _lbl(ws, r, "Cross-connect MRC (escalated)", "Lakh/XC/mo")
     for j in range(N):
         f(r, j, f"={_asmp('xc_fee')}*(1+{_asmp('xc_esc')})^({cl(j)}4-1)", FMT_CR)
     r += 1
@@ -520,13 +520,13 @@ def write_rev(wb):
     REV_R['colo'] = r
     _lbl(ws, r, "Recurring colo revenue", "Cr")
     for j in range(N):
-        f(r, j, f"=SIZE!{cl(j)}{occ}*REV!{cl(j)}{REV_R['rack_mrc_esc']}*12", FMT_CR)
+        f(r, j, f"=SIZE!{cl(j)}{occ}*REV!{cl(j)}{REV_R['rack_mrc_esc']}*12/100", FMT_CR)  # /100: rate is in Lakh, revenue in Cr
     r += 1
 
     REV_R['otc'] = r
     _lbl(ws, r, "OTC setup revenue", "Cr")
     for j in range(N):
-        f(r, j, f"=SIZE!{cl(j)}{SIZE_R['new_racks']}*REV!{cl(j)}{REV_R['otc_esc']}", FMT_CR)
+        f(r, j, f"=SIZE!{cl(j)}{SIZE_R['new_racks']}*REV!{cl(j)}{REV_R['otc_esc']}/100", FMT_CR)  # /100: rate is in Lakh, revenue in Cr
     r += 1
 
     REV_R['power'] = r
@@ -538,7 +538,7 @@ def write_rev(wb):
     REV_R['xc'] = r
     _lbl(ws, r, "Cross-connect revenue", "Cr")
     for j in range(N):
-        f(r, j, f"=SIZE!{cl(j)}{occ}*REV!{cl(j)}{REV_R['xc_pen']}*REV!{cl(j)}{REV_R['xc_esc']}*12", FMT_CR)
+        f(r, j, f"=SIZE!{cl(j)}{occ}*REV!{cl(j)}{REV_R['xc_pen']}*REV!{cl(j)}{REV_R['xc_esc']}*12/100", FMT_CR)  # /100: rate is in Lakh, revenue in Cr
     r += 1
 
     r += 1  # blank
